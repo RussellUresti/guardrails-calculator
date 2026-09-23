@@ -37,8 +37,7 @@ details.io-section .sec-title{font-weight:600;font-size:14px;display:flex;align-
 details.io-section .sec-title::before{content:"▾";display:inline-block;width:10px;font-size:12px;color:var(--muted)}
 details.io-section:not([open]) .sec-title::before{content:"▸"}
 details.io-section .sec-sum{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:400;color:var(--muted)}
-details.io-section .sec-edit{flex-shrink:0;font-size:13px;font-weight:600;color:var(--focus)}
-details.io-section[open] .sec-sum,details.io-section[open] .sec-edit{display:none}
+details.io-section[open] .sec-sum{display:none}
 .row{display:grid;grid-template-columns:1fr 128px;gap:10px;align-items:center;margin-bottom:8px;max-width:900px}
 .row label{font-size:14px;color:var(--muted)}
 .row .hint{display:block;font-size:12px;color:var(--muted);opacity:.85}
