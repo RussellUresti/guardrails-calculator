@@ -57,6 +57,9 @@ export function render(p, now, total, r, coh) {
   if (upV != null) lab += `<span style="left:${Math.min(92, up)}%"><b>${fmtK(upV)}</b>raise</span>`;
   labels.innerHTML = lab;
   drawChart(p, now, col, q, coh);
+  $("legBest").textContent = coh ? `Best actual cohort (${coh.best.from}–${coh.best.to})` : "Best actual cohort";
+  $("legTypical").textContent = coh ? `Typical actual cohort (${coh.median.from}–${coh.median.to})` : "Typical actual cohort";
+  $("legWorst").textContent = coh ? `Worst actual cohort (${coh.worst.from}–${coh.worst.to})` : "Worst actual cohort";
 }
 
 export function updateMix() {
