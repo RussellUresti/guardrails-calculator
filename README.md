@@ -4,6 +4,16 @@ A Monte Carlo retirement spending calculator implementing risk-based guardrails 
 
 Static HTML/JS/CSS, no build step and no dependencies.
 
+## Disclaimer
+
+This tool is for **educational and illustrative purposes only**. It is not financial, investment, tax, or legal advice, and none of its outputs — success rates, spending amounts, guardrail triggers, or anything else it calculates — should be relied on for actual retirement or investment decisions.
+
+- **Not reviewed by a financial professional.** The methodology (Monte Carlo simulation, historical cohort replay, guardrails logic) draws on publicly available financial research and industry-standard techniques, but neither the methodology nor the implementation has been audited or reviewed for correctness by a licensed financial advisor, actuary, or other qualified professional.
+- **No guarantee of accuracy.** Historical data and projected capital market assumptions come from third-party sources (see "Updating the market data" below) and may be wrong, outdated, or superseded without notice. The code itself may also contain bugs that produce incorrect results.
+- **Past performance and projections are not guarantees of future results.** Historical returns don't predict future returns, and projected forecasts are estimates, not promises.
+- **This can't capture your whole financial picture.** Taxes, estate planning, healthcare costs, Social Security timing, legal considerations, and countless other individual factors are simplified or omitted entirely.
+- **Use at your own risk.** Consult a qualified, licensed financial advisor, tax professional, and/or attorney before making any retirement, investment, or spending decisions. Nobody involved in building this tool accepts any liability for decisions made using it.
+
 ## How to use this tool
 
 1. **Timeline and accounts.** Enter your current age, plan-through age, and (if applicable) the age retirement accounts open at — leave that equal to your current age if there's no bridge period. Fill in taxable, cash, and retirement balances, and each side's stock/bond split.
