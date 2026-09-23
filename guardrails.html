@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Risk-based guardrails calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF0EE; --surface:#FFFFFF; --ink:#16242B; --muted:#5B6B70; --line:#D3DAD7;
+  --safe:#2E6F5E; --safe-soft:#D6E8E2; --cut:#B5651D; --cut-soft:#F3E2D1; --raise:#2F5F8F; --raise-soft:#D9E4F0;
+  --focus:#2F5F8F;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#111A1D; --surface:#182226; --ink:#E4EBE9; --muted:#95A5A8; --line:#2D3B3F;
+    --safe:#5FB39B; --safe-soft:#1D3530; --cut:#E09A56; --cut-soft:#3A2A1B; --raise:#7EA9D8; --raise-soft:#1D2C3C; --focus:#7EA9D8;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#111A1D; --surface:#182226; --ink:#E4EBE9; --muted:#95A5A8; --line:#2D3B3F;
+  --safe:#5FB39B; --safe-soft:#1D3530; --cut:#E09A56; --cut-soft:#3A2A1B; --raise:#7EA9D8; --raise-soft:#1D2C3C; --focus:#7EA9D8;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Instrument Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-size:15px;line-height:1.5;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1240px;margin:0 auto;padding:28px 20px 48px}
+header{margin-bottom:24px;max-width:70ch}
+h1{font-size:clamp(26px,3.4vw,36px);line-height:1.1;margin:0 0 8px;font-weight:700;letter-spacing:-0.015em}
+header p{margin:0;color:var(--muted)}
+.grid{display:grid;grid-template-columns:minmax(280px,360px) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;min-width:0}
+form fieldset{border:0;margin:0 0 18px;padding:0}
+form legend{font-weight:600;font-size:14px;margin-bottom:8px;padding:0}
+.row{display:grid;grid-template-columns:1fr 128px;gap:10px;align-items:center;margin-bottom:8px}
+.row label{font-size:14px;color:var(--muted)}
+.row .hint{display:block;font-size:12px;color:var(--muted);opacity:.85}
+input,select{width:100%;font:inherit;font-size:14px;color:var(--ink);background:var(--bg);
+  border:1px solid var(--line);border-radius:6px;padding:6px 8px;text-align:right}
+select{text-align:left}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:7px;overflow:hidden;margin-bottom:8px}
+.seg button{border:0;border-right:1px solid var(--line);border-radius:0;background:var(--bg);color:var(--muted);font-weight:500;padding:7px 4px;font-size:13px}
+.seg button:last-child{border-right:0}
+.seg.two{grid-template-columns:repeat(2,1fr)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);font-weight:600}
+.srcnote{font-size:12px;color:var(--muted);margin:2px 0 10px;min-height:18px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;font-size:14px;font-weight:600;border-radius:6px;padding:8px 14px;cursor:pointer;border:1px solid var(--ink);background:var(--ink);color:var(--bg)}
+button.secondary{background:transparent;color:var(--ink);border-color:var(--line)}
+button:disabled{opacity:.5;cursor:wait}
+.mix{margin-top:10px;font-size:13px;color:var(--muted)}
+.mixbar{display:flex;height:10px;border-radius:5px;overflow:hidden;margin:6px 0;background:var(--line)}
+.mixbar span{height:100%}
+.mix .k{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.mix p{margin:2px 0}
+
+.status{font-size:14px;color:var(--muted);min-height:21px;margin-bottom:10px}
+.road{margin:6px 0 22px}
+.road-track{position:relative;height:54px;border-radius:8px;overflow:hidden;display:flex}
+.zone{height:100%}
+.zone.cut{background:var(--cut-soft)} .zone.safe{background:var(--safe-soft)} .zone.raise{background:var(--raise-soft)}
+.rail{position:absolute;top:0;bottom:0;width:3px;margin-left:-1.5px}
+.rail.cut{background:var(--cut)} .rail.raise{background:var(--raise)}
+.you{position:absolute;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:var(--ink);border:3px solid var(--surface);box-shadow:0 0 0 1px var(--ink)}
+.road-labels{position:relative;height:40px;font-size:12px;color:var(--muted)}
+.road-labels span{position:absolute;transform:translateX(-50%);white-space:nowrap;top:6px;text-align:center;line-height:1.3}
+.road-labels b{display:block;color:var(--ink);font-weight:600;font-size:13px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px}
+@media (max-width:620px){.cards{grid-template-columns:1fr}}
+.card{border-radius:8px;padding:14px;border-left:4px solid var(--line);background:var(--bg)}
+.card.cut{border-color:var(--cut)} .card.safe{border-color:var(--safe)} .card.raise{border-color:var(--raise)}
+.card h3{margin:0 0 6px;font-size:14px;font-weight:600}
+.card .big{font-size:24px;font-weight:700;line-height:1.15;letter-spacing:-0.01em}
+.card p{margin:4px 0 0;font-size:13px;color:var(--muted)}
+.rule{font-size:15px;max-width:72ch;margin:0 0 22px;padding:14px 16px;border:1px solid var(--line);border-radius:8px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 18px;margin:0 0 22px}
+.stats div{font-size:13px;color:var(--muted)}
+.stats b{display:block;font-size:19px;color:var(--ink);font-weight:600}
+h2{font-size:17px;margin:0 0 8px}
+.chart-wrap{overflow-x:auto}
+svg{display:block;max-width:100%}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:14px;height:10px;margin-right:6px;vertical-align:middle;border-radius:2px}
+.notes{font-size:13px;color:var(--muted);max-width:75ch}
+.notes li{margin-bottom:6px}
+.warn{color:var(--cut);font-weight:600}
+@media (prefers-reduced-motion:no-preference){.you{transition:left .4s ease}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Risk-based guardrails, with a bridge</h1>
+  <p>Monte Carlo spending guardrails for an early retiree who has to live on taxable money until retirement accounts open up. All dollars are in today's dollars; returns are after inflation.</p>
+</header>
+
+<div class="grid">
+<form class="panel" id="f" onsubmit="return false">
+  <fieldset>
+    <legend>Timeline</legend>
+    <div class="row"><label for="age">Current age</label><input id="age" type="number" step="0.5" value="43"></div>
+    <div class="row"><label for="access">Retirement accounts open at<span class="hint">59.5 unless you plan SEPP or a Roth ladder</span></label><input id="access" type="number" step="0.5" value="59.5"></div>
+    <div class="row"><label for="endAge">Plan through age</label><input id="endAge" type="number" step="1" value="95"></div>
+  </fieldset>
+  <fieldset>
+    <legend>Accounts</legend>
+    <div class="row"><label for="tax">Taxable, invested</label><input id="tax" type="number" step="10000" value="1200000"></div>
+    <div class="row"><label for="cash">Cash reserve</label><input id="cash" type="number" step="5000" value="90000"></div>
+    <div class="row"><label for="ret">Retirement accounts<span class="hint">401(k), IRA, Roth combined</span></label><input id="ret" type="number" step="10000" value="600000"></div>
+  </fieldset>
+  <fieldset>
+    <legend>Asset allocation</legend>
+    <div class="row"><label for="tStock">Taxable invested: stocks %<span class="hint">the rest is bonds; cash reserve is separate</span></label><input id="tStock" type="number" step="5" min="0" max="100" value="80"></div>
+    <div class="row"><label for="rStock">Retirement accounts: stocks %<span class="hint">the rest is bonds</span></label><input id="rStock" type="number" step="5" min="0" max="100" value="80"></div>
+    <div class="mix" id="mix" aria-live="polite"></div>
+  </fieldset>
+  <fieldset>
+    <legend>Spending and income</legend>
+    <div class="row"><label for="spend">Annual spending, after tax</label><input id="spend" type="number" step="1000" value="50000"></div>
+    <div class="row"><label for="tt">Tax drag on taxable withdrawals %<span class="hint">effective rate on each dollar sold</span></label><input id="tt" type="number" step="1" value="5"></div>
+    <div class="row"><label for="tr">Tax on retirement withdrawals %<span class="hint">blended; Roth lowers it</span></label><input id="tr" type="number" step="1" value="15"></div>
+    <div class="row"><label for="inc">Other income per year<span class="hint">e.g. Social Security estimate</span></label><input id="inc" type="number" step="1000" value="0"></div>
+    <div class="row"><label for="incAge">Other income starts at age</label><input id="incAge" type="number" step="1" value="67"></div>
+  </fieldset>
+  <fieldset>
+    <legend>Guardrails (probability of success)</legend>
+    <div class="row"><label for="gT">Target %</label><input id="gT" type="number" step="1" value="80"></div>
+    <div class="row"><label for="gL">Lower guardrail, cut below %</label><input id="gL" type="number" step="1" value="70"></div>
+    <div class="row"><label for="gU">Upper guardrail, raise above %</label><input id="gU" type="number" step="1" value="95"></div>
+    <div class="row"><label for="short">If taxable runs dry before access age</label>
+      <select id="short"><option value="fail">Count as failure</option><option value="penalty">Tap retirement with 10% penalty</option></select></div>
+  </fieldset>
+  <fieldset>
+    <legend>Market assumptions</legend>
+    <div class="seg two" id="eqSeg" role="group" aria-label="Stock market">
+      <button type="button" data-v="global">Global stocks</button><button type="button" data-v="us">US stocks</button>
+    </div>
+    <input type="hidden" id="eq" value="global">
+    <div class="row" id="usWRow"><label for="usW">US share of global stocks %<span class="hint">a total world index is about 63%</span></label><input id="usW" type="number" step="1" min="0" max="100" value="63"></div>
+    <div class="row" id="hcRow"><label for="hc">Historical stock haircut %<span class="hint">world stocks trailed the US ~1%/yr since 1900</span></label><input id="hc" type="number" step="0.25" min="0" max="5" value="1"></div>
+    <div class="seg" id="srcSeg" role="group" aria-label="Return source">
+      <button type="button" data-v="custom">Custom</button><button type="button" data-v="hist">Historical</button><button type="button" data-v="proj">Projected</button>
+    </div>
+    <div class="seg" id="lvlSeg" role="group" aria-label="Scenario">
+      <button type="button" data-v="pess">Pessimistic</button><button type="button" data-v="cons">Consensus</button><button type="button" data-v="opt">Optimistic</button>
+    </div>
+    <div class="row" id="hzRow"><label for="hz">Apply forecasts for<span class="hint">forecasts cover 10–15 years</span></label>
+      <select id="hz"><option value="all">Every year</option><option value="10">10 years, then historical</option></select></div>
+    <p class="srcnote" id="srcNote"></p>
+    <input type="hidden" id="src" value="hist"><input type="hidden" id="lvl" value="cons">
+    <div class="row"><label for="sm">Stocks, mean real return %<span class="hint" id="smG"></span></label><input id="sm" class="ret" type="number" step="0.05" value="5"></div>
+    <div class="row"><label for="ss">Stocks, volatility %</label><input id="ss" class="ret" type="number" step="0.5" value="17"></div>
+    <div class="row"><label for="bm">Bonds, mean real return %<span class="hint" id="bmG"></span></label><input id="bm" class="ret" type="number" step="0.05" value="1.75"></div>
+    <div class="row"><label for="bs">Bonds, volatility %</label><input id="bs" class="ret" type="number" step="0.5" value="6"></div>
+    <div class="row"><label for="cm">Cash, mean real return %</label><input id="cm" class="ret" type="number" step="0.05" value="0.5"></div>
+    <div class="row"><label for="cs">Cash, volatility %</label><input id="cs" class="ret" type="number" step="0.25" value="1"></div>
+    <div class="row"><label for="rho">Stock/bond correlation</label><input id="rho" class="ret" type="number" step="0.05" min="-1" max="1" value="0.1"></div>
+    <div class="row"><label for="sims">Simulations</label><input id="sims" type="number" step="500" min="500" max="10000" value="3000"></div>
+    <div class="row"><label for="seed">Random seed</label><input id="seed" type="number" step="1" value="42"></div>
+  </fieldset>
+  <div class="btns">
+    <button type="button" id="run">Calculate</button>
+    <button type="button" id="useRec" class="secondary">Use recommended spending</button>
+    <button type="button" id="reset" class="secondary">Reset inputs</button>
+  </div>
+</form>
+
+<main class="panel" id="out" aria-live="polite">
+  <div class="status" id="status">Calculating…</div>
+  <div id="results" hidden>
+    <div class="road" aria-hidden="true">
+      <div class="road-track" id="track"></div>
+      <div class="road-labels" id="roadLabels"></div>
+    </div>
+    <div class="cards">
+      <div class="card cut"><h3>Cut trigger</h3><div class="big" id="cTrig">–</div><p id="cText"></p></div>
+      <div class="card safe"><h3>Today</h3><div class="big" id="nowSucc">–</div><p id="nowText"></p></div>
+      <div class="card raise"><h3>Raise trigger</h3><div class="big" id="uTrig">–</div><p id="uText"></p></div>
+    </div>
+    <p class="rule" id="rule"></p>
+    <div class="stats" id="stats"></div>
+
+    <h2>Total portfolio, today's dollars</h2>
+    <div class="chart-wrap"><svg id="chart" viewBox="0 0 680 260" role="img" aria-label="Portfolio projection percentiles"></svg></div>
+    <div class="legend">
+      <span><i style="background:var(--safe-soft)"></i>10th–90th percentile</span>
+      <span><i style="background:var(--safe)"></i>Median total</span>
+      <span><i style="background:var(--cut)"></i>Median taxable</span>
+      <span><i style="background:var(--muted)"></i>Access age</span>
+    </div>
+    <h2 style="margin-top:22px">How it's calculated</h2>
+    <ul class="notes">
+      <li>Each simulation draws yearly real returns from lognormal distributions. The same random draws are reused for every search and every scenario, so differences between settings come from the assumptions, not from luck.</li>
+      <li><b>Historical</b> uses Aswath Damodaran's annual US data, 1928–2025 (S&amp;P 500 with dividends, 10-year Treasuries, 3-month T-bills), deflated by CPI. There are 49 overlapping 50-year windows. Pessimistic and optimistic are the worst and best windows for <i>your</i> overall stock/bond/cash mix; consensus averages the mean, volatility and correlation across all 49. Each window's mean and volatility then drive the simulation, so the order of good and bad years is randomized rather than replayed.</li>
+      <li><b>Projected</b> uses published 10-year (J.P. Morgan: 10–15 year) nominal forecasts for US large caps and US aggregate bonds, converted to real with a 2.4% inflation assumption. Stocks: Research Affiliates 3.1%, Vanguard 4.5% (midpoint of 4–5%), Verus 5.4%, Schwab 5.9%, J.P. Morgan 6.7%. Bonds: Vanguard 4.3% (midpoint), Research Affiliates 4.7%, Schwab 4.8%, J.P. Morgan 4.8%. Cash: Schwab 3.3%. Pessimistic, consensus and optimistic are the lowest, average and highest. Volatility is set to 16.5% for stocks and 6% for bonds.</li>
+      <li><b>Global stocks</b> (the default) blend each firm's US and international forecasts at your US weight, with international split 75% developed and 25% emerging. J.P. Morgan publishes a global figure (7.0%) directly; Verus is left out because no international figure was available. Averaging geometric returns this way slightly understates a blended portfolio's compound return. For historical scenarios, each year's S&amp;P 500 real return is reduced by the haircut, since world stocks trailed the US by roughly 1%/yr in long-run data from 1900.</li>
+      <li>Success means spending is funded every year through the plan age. Before the access age, only taxable and cash can pay the bills. The taxable account keeps the cash reserve at the same share each year. Withdrawals are grossed up by the tax rates you enter.</li>
+      <li>Triggers scale all balances together, which approximates a market move. Spending stays constant in real terms inside each simulation, as in the Kitces/Income Lab method. Re-run after any adjustment and at least once a year.</li>
+    </ul>
+  </div>
+</main>
+</div>
+</div>
+
+<script>
+const HIST="1928,43.81,3.08,0.84,-1.16;1929,-8.30,3.16,4.20,0.58;1930,-25.12,4.55,4.54,-6.4;1931,-43.84,2.31,-2.56,-9.32;1932,-8.64,1.07,8.79,-10.27;1933,49.98,0.96,1.86,0.76;1934,-1.19,0.28,7.96,1.52;1935,46.74,0.17,4.47,2.99;1936,31.94,0.17,5.02,1.45;1937,-35.34,0.28,1.38,2.86;1938,29.28,0.07,4.21,-2.78;1939,-1.10,0.05,4.41,0.0;1940,-10.67,0.04,5.40,0.71;1941,-12.77,0.13,-2.02,9.93;1942,19.17,0.34,2.29,9.03;1943,25.06,0.38,2.49,2.96;1944,19.03,0.38,2.58,2.3;1945,35.82,0.38,3.80,2.25;1946,-8.43,0.38,3.13,18.13;1947,5.20,0.60,0.92,8.84;1948,5.70,1.05,1.95,2.73;1949,18.30,1.12,4.66,-1.83;1950,30.81,1.20,0.43,5.8;1951,23.68,1.52,-0.30,5.96;1952,18.15,1.72,2.27,0.91;1953,-1.21,1.89,4.14,0.6;1954,52.56,0.94,3.29,-0.37;1955,32.60,1.72,-1.34,0.37;1956,7.44,2.62,-2.26,2.83;1957,-10.46,3.22,6.80,3.04;1958,43.72,1.77,-2.10,1.76;1959,12.06,3.39,-2.65,1.52;1960,0.34,2.87,11.64,1.36;1961,26.64,2.35,2.06,0.67;1962,-8.81,2.77,5.69,1.23;1963,22.61,3.16,1.68,1.65;1964,16.42,3.55,3.73,1.2;1965,12.40,3.95,0.72,1.92;1966,-9.97,4.86,2.91,3.36;1967,23.80,4.29,-1.58,3.28;1968,10.81,5.34,3.27,4.71;1969,-8.24,6.67,-5.01,5.9;1970,3.56,6.39,16.75,5.57;1971,14.22,4.33,9.79,3.27;1972,18.76,4.06,2.82,3.41;1973,-14.31,7.04,3.66,8.94;1974,-25.90,7.85,1.99,12.1;1975,37.00,5.79,3.61,7.13;1976,23.83,4.98,15.98,5.04;1977,-6.98,5.26,1.29,6.68;1978,6.51,7.18,-0.78,8.99;1979,18.52,10.05,0.67,13.25;1980,31.74,11.39,-2.99,12.35;1981,-4.70,14.04,8.20,8.91;1982,20.42,11.09,32.81,3.83;1983,22.34,8.95,3.20,3.79;1984,6.15,9.92,13.73,4.04;1985,31.24,7.72,25.71,3.79;1986,18.49,6.15,24.28,1.19;1987,5.81,5.96,-4.96,4.33;1988,16.54,6.89,8.22,4.41;1989,31.48,8.39,17.69,4.64;1990,-3.06,7.75,6.24,6.25;1991,30.23,5.54,15.00,2.98;1992,7.49,3.51,9.36,2.97;1993,9.97,3.07,14.21,2.81;1994,1.33,4.37,-8.04,2.6;1995,37.20,5.66,23.48,2.53;1996,22.68,5.15,1.43,3.38;1997,33.10,5.20,9.94,1.7;1998,28.34,4.91,14.92,1.61;1999,20.89,4.78,-8.25,2.68;2000,-9.03,6.00,16.66,3.44;2001,-11.85,3.48,5.57,1.6;2002,-21.97,1.64,15.12,2.48;2003,28.36,1.03,0.38,2.04;2004,10.74,1.40,4.49,3.34;2005,4.83,3.22,2.87,3.34;2006,15.61,4.85,1.96,2.52;2007,5.48,4.48,10.21,4.11;2008,-36.55,1.40,20.10,-0.02;2009,25.94,0.15,-11.12,2.81;2010,14.82,0.14,8.46,1.44;2011,2.10,0.05,16.04,3.06;2012,15.89,0.09,2.97,1.76;2013,32.15,0.06,-9.10,1.51;2014,13.52,0.03,10.75,0.65;2015,1.38,0.05,1.28,0.64;2016,11.77,0.32,0.69,2.05;2017,21.61,0.95,2.80,2.13;2018,-4.23,1.97,-0.02,2.0;2019,31.21,2.11,9.64,2.31;2020,18.02,0.36,11.33,1.32;2021,28.47,0.04,-4.42,7.19;2022,-18.04,2.09,-17.83,6.44;2023,26.06,5.28,3.88,3.12;2024,24.88,5.18,-1.64,2.9;2025,17.78,4.21,7.80,2.7".split(";").map(r=>r.split(",").map(Number)).map(([y,s,c,b,i])=>({y,s:(1+s/100)/(1+i/100)-1,c:(1+c/100)/(1+i/100)-1,b:(1+b/100)/(1+i/100)-1}));
+const CMA={infl:2.4,ss:0.165,bs:0.06,cs:0.01,rho:0.1,cash:3.3,
+  stocks:[["Research Affiliates",3.1],["Vanguard",4.5],["Verus",5.4],["Schwab",5.9],["J.P. Morgan",6.7]],
+  bonds:[["Vanguard",4.3],["Research Affiliates",4.7],["Schwab",4.8],["J.P. Morgan",4.8]],
+  global:[{src:"J.P. Morgan",direct:7.0},{src:"Schwab",us:5.9,dev:7.0,em:6.8},{src:"Vanguard",us:4.5,exus:5.9},{src:"Research Affiliates",us:3.1,dev:7.7,em:7.5}]};
+function eqOpts(){return{eq:document.getElementById("eq").value,usW:Math.min(1,Math.max(0,(parseFloat(document.getElementById("usW").value)||0)/100)),hc:(parseFloat(document.getElementById("hc").value)||0)/100};}
+function globalStocks(usW){return CMA.global.map(f=>{
+  if(f.direct!=null)return[f.src,f.direct];
+  const ex=f.exus!=null?f.exus:0.75*f.dev+0.25*f.em;return[f.src,usW*f.us+(1-usW)*ex];});}
+const hcTxt=o=>(o.hc*100).toFixed(2).replace(/\.?0+$/,"");
+const LEVELS={pess:"Pessimistic",cons:"Consensus",opt:"Optimistic"};
+
+const FIELDS=["age","access","endAge","tax","cash","ret","tStock","rStock","spend","tt","tr","inc","incAge","gT","gL","gU","short","eq","usW","hc","src","lvl","hz","sm","ss","bm","bs","cm","cs","rho","sims","seed"];
+const DEFAULTS={};
+FIELDS.forEach(id=>DEFAULTS[id]=document.getElementById(id).value);
+const KEY="rbg-bridge-inputs-v2";
+try{const s=JSON.parse(localStorage.getItem(KEY)||localStorage.getItem("rbg-bridge-inputs-v1")||"null");if(s){FIELDS.forEach(id=>{if(s[id]!==undefined)document.getElementById(id).value=s[id];});if(s.src===undefined)document.getElementById("src").value="custom";}}catch(e){}
+function save(){try{const o={};FIELDS.forEach(id=>o[id]=document.getElementById(id).value);localStorage.setItem(KEY,JSON.stringify(o));}catch(e){}}
+const $=id=>document.getElementById(id);
+const num=id=>parseFloat($(id).value)||0;
+const clamp01=v=>Math.min(1,Math.max(0,v));
+
+// ---------- stats helpers ----------
+const mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
+const sd=a=>{const m=mean(a);return Math.sqrt(a.reduce((x,y)=>x+(y-m)*(y-m),0)/(a.length-1));};
+const corr=(a,b)=>{const ma=mean(a),mb=mean(b);let n=0,da=0,db=0;for(let i=0;i<a.length;i++){n+=(a[i]-ma)*(b[i]-mb);da+=(a[i]-ma)**2;db+=(b[i]-mb)**2;}return n/Math.sqrt(da*db);};
+function lnP(m,s){const v=Math.log(1+(s*s)/((1+m)*(1+m)));return{mu:Math.log(1+m)-v/2,sig:Math.sqrt(v)};}
+const geoOf=(m,s)=>Math.exp(lnP(m,s).mu)-1;
+function arithFromGeo(g,s){let lo=g-0.01,hi=g+s*s+0.01;for(let k=0;k<60;k++){const m=(lo+hi)/2;if(geoOf(m,s)<g)lo=m;else hi=m;}return (lo+hi)/2;}
+
+function overallMix(){
+  const tax=num("tax"),cash=num("cash"),ret=num("ret"),ts=clamp01(num("tStock")/100),rs=clamp01(num("rStock")/100),tot=tax+cash+ret||1;
+  return{s:(tax*ts+ret*rs)/tot,b:(tax*(1-ts)+ret*(1-rs))/tot,c:cash/tot};
+}
+function histWindows(mix,opts,L=50){
+  const out=[],hc=opts&&opts.eq==="global"?opts.hc:0;
+  const D=hc?HIST.map(x=>({...x,s:x.s-hc})):HIST;
+  for(let k=0;k+L<=D.length;k++){
+    const w=D.slice(k,k+L),S=w.map(x=>x.s),B=w.map(x=>x.b),C=w.map(x=>x.c);
+    let g=1;w.forEach(x=>g*=1+mix.s*x.s+mix.b*x.b+mix.c*x.c);
+    out.push({from:w[0].y,to:w[L-1].y,cagr:Math.pow(g,1/L)-1,sm:mean(S),ss:sd(S),bm:mean(B),bs:sd(B),cm:mean(C),cs:sd(C),rho:corr(S,B)});
+  }
+  return out;
+}
+function histPreset(level,mix,opts){
+  opts=opts||eqOpts();
+  const W=histWindows(mix,opts),hn=opts.eq==="global"&&opts.hc?`; US stocks less ${hcTxt(opts)}%/yr as a global proxy`:"";
+  if(level==="cons"){
+    const o={};["sm","ss","bm","bs","cm","cs","rho"].forEach(k=>o[k]=mean(W.map(w=>w[k])));
+    o.label=`Average of all ${W.length} 50-year windows, ${W[0].from}–${W[W.length-1].to}${hn}`;return o;
+  }
+  const pick=W.reduce((a,b)=>(level==="pess"?(b.cagr<a.cagr):(b.cagr>a.cagr))?b:a);
+  return{...pick,label:`${pick.from}–${pick.to}: the ${level==="pess"?"worst":"best"} 50-year window for your mix (${(pick.cagr*100).toFixed(1)}%/yr real)${hn}`};
+}
+function projPreset(level,opts){
+  opts=opts||eqOpts();
+  const stocks=opts.eq==="global"?globalStocks(opts.usW):CMA.stocks;
+  const pickFrom=arr=>{if(level==="cons")return{v:mean(arr.map(a=>a[1])),src:"average of "+arr.length};
+    const v=level==="pess"?Math.min(...arr.map(a=>a[1])):Math.max(...arr.map(a=>a[1]));
+    return{v,src:arr.filter(a=>a[1]===v).map(a=>a[0]).join(", ")};};
+  const s=pickFrom(stocks),b=pickFrom(CMA.bonds),inf=1+CMA.infl/100;
+  const gs=(1+s.v/100)/inf-1,gb=(1+b.v/100)/inf-1,gc=(1+CMA.cash/100)/inf-1;
+  return{sm:arithFromGeo(gs,CMA.ss),ss:CMA.ss,bm:arithFromGeo(gb,CMA.bs),bs:CMA.bs,cm:arithFromGeo(gc,CMA.cs),cs:CMA.cs,rho:CMA.rho,
+    label:`${opts.eq==="global"?"Global":"US large-cap"} stocks ${s.v.toFixed(1)}% nominal (${s.src}), bonds ${b.v.toFixed(1)}% (${b.src}), less ${CMA.infl}% inflation`};
+}
+function presetFor(src,lvl,mix){const o=eqOpts();return src==="hist"?histPreset(lvl,mix,o):projPreset(lvl,o);}
+
+// ---------- source controls ----------
+const RETF=["sm","ss","bm","bs","cm","cs","rho"];
+const r2=v=>Math.round(v*100)/100;
+function setInputsFrom(pr){
+  $("sm").value=r2(pr.sm*100);$("ss").value=r2(pr.ss*100);$("bm").value=r2(pr.bm*100);$("bs").value=r2(pr.bs*100);
+  $("cm").value=r2(pr.cm*100);$("cs").value=r2(pr.cs*100);$("rho").value=r2(pr.rho);
+}
+function syncControls(){
+  const src=$("src").value,lvl=$("lvl").value;
+  document.querySelectorAll("#srcSeg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===src));
+  document.querySelectorAll("#lvlSeg button").forEach(b=>{b.setAttribute("aria-pressed",src!=="custom"&&b.dataset.v===lvl);b.disabled=false;});
+  $("hzRow").style.display=src==="proj"?"":"none";
+  const eq=$("eq").value;
+  document.querySelectorAll("#eqSeg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===eq));
+  $("usWRow").style.display=eq==="global"?"":"none";$("hcRow").style.display=eq==="global"?"":"none";
+  if(src!=="custom"){const pr=presetFor(src,lvl,overallMix());setInputsFrom(pr);
+    let note=pr.label;if(src==="proj"&&$("hz").value==="10")note+=". After year 10, switches to historical consensus.";
+    $("srcNote").textContent=note;}
+  else $("srcNote").textContent="Your own inputs. Pick Historical or Projected to load a scenario; the stock-market toggle only affects those.";
+  $("smG").textContent=`≈ ${(geoOf(num("sm")/100,num("ss")/100)*100).toFixed(2)}% compound`;
+  $("bmG").textContent=`≈ ${(geoOf(num("bm")/100,num("bs")/100)*100).toFixed(2)}% compound`;
+}
+document.querySelectorAll("#srcSeg button").forEach(b=>b.addEventListener("click",()=>{$("src").value=b.dataset.v;syncControls();save();calculate();}));
+document.querySelectorAll("#eqSeg button").forEach(b=>b.addEventListener("click",()=>{$("eq").value=b.dataset.v;syncControls();save();calculate();}));
+document.querySelectorAll("#lvlSeg button").forEach(b=>b.addEventListener("click",()=>{if($("src").value==="custom")$("src").value="hist";$("lvl").value=b.dataset.v;syncControls();save();calculate();}));
+
+// ---------- model ----------
+function readInputs(){
+  const p={age:num("age"),access:num("access"),endAge:num("endAge"),tax:num("tax"),cash:num("cash"),ret:num("ret"),
+    ts:clamp01(num("tStock")/100),rs:clamp01(num("rStock")/100),spend:num("spend"),tt:num("tt")/100,tr:num("tr")/100,inc:num("inc"),incAge:num("incAge"),
+    gT:num("gT")/100,gL:num("gL")/100,gU:num("gU")/100,short:$("short").value,
+    sm:num("sm")/100,ss:num("ss")/100,bm:num("bm")/100,bs:num("bs")/100,cm:num("cm")/100,cs:num("cs")/100,rho:Math.max(-0.99,Math.min(0.99,num("rho"))),
+    sims:Math.max(500,Math.min(10000,Math.round(num("sims")))),seed:Math.round(num("seed")),after:null,afterYears:0,
+    src:$("src").value,lvl:$("lvl").value,hz:$("hz").value};
+  p.years=Math.max(1,Math.ceil(p.endAge-p.age));
+  if(p.src==="proj"&&p.hz==="10"){p.after=histPreset("cons",overallMix());p.afterYears=10;}
+  return p;
+}
+function validate(p){
+  if(p.endAge<=p.age) return "Plan-through age must be after your current age.";
+  if(!(p.gL<p.gT&&p.gT<p.gU)) return "Guardrails must satisfy lower < target < upper.";
+  if(p.gU>=1) return "Upper guardrail must be below 100%.";
+  if(p.tt>=0.9||p.tr>=0.8) return "Tax rates look too high to model.";
+  if(p.tax+p.cash+p.ret<=0) return "Enter at least one account balance.";
+  return null;
+}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function buildReturns(p){
+  const N=p.sims,Y=p.years,rnd=mulberry32(p.seed||1);
+  const g=()=>{let u=0;while(u===0)u=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*rnd());};
+  const mk=q=>({S:lnP(q.sm,q.ss),B:lnP(q.bm,q.bs),C:lnP(q.cm,q.cs),rho:q.rho,k:Math.sqrt(Math.max(0,1-q.rho*q.rho))});
+  const A=mk(p),Z=p.after?mk(p.after):A;
+  const rs=new Float64Array(N*Y),rb=new Float64Array(N*Y),rc=new Float64Array(N*Y);
+  for(let n=0;n<N;n++)for(let y=0;y<Y;y++){
+    const i=n*Y+y,P=(p.after&&y>=p.afterYears)?Z:A,z1=g(),z2=g(),z3=g(),zb=P.rho*z1+P.k*z2;
+    rs[i]=Math.exp(P.S.mu+P.S.sig*z1);rb[i]=Math.exp(P.B.mu+P.B.sig*zb);rc[i]=Math.exp(P.C.mu+P.C.sig*z3);
+  }
+  return{rs,rb,rc};
+}
+function simulate(p,R,spend,f,record){
+  const N=p.sims,Y=p.years,T0=(p.tax+p.cash)*f,Ret0=p.ret*f;
+  const wc=(p.tax+p.cash)>0?p.cash/(p.tax+p.cash):0;
+  let ok=0,bridgeFail=0,lateFail=0;
+  const tot=record?new Float64Array(N*(Y+1)):null,txb=record?new Float64Array(N*(Y+1)):null;
+  const penRate=1-p.tr-0.10;
+  for(let n=0;n<N;n++){
+    let T=T0,Rt=Ret0,failed=false;
+    if(record){tot[n*(Y+1)]=T+Rt;txb[n*(Y+1)]=T;}
+    for(let y=0;y<Y;y++){
+      const age=p.age+y;
+      let need=spend-(age>=p.incAge?p.inc:0);if(need<0)need=0;
+      const pre=Math.min(1,Math.max(0,p.access-age)),needPre=need*pre,needPost=need-needPre;
+      let gross=needPre/(1-p.tt);
+      if(gross<=T){T-=gross;}
+      else{const rem=(gross-T)*(1-p.tt);T=0;
+        if(p.short==="penalty"&&penRate>0){const g2=rem/penRate;if(g2<=Rt)Rt-=g2;else{failed=true;bridgeFail++;}}
+        else{failed=true;bridgeFail++;}}
+      if(!failed){gross=needPost/(1-p.tt);
+        if(gross<=T){T-=gross;}
+        else{const rem=(gross-T)*(1-p.tt);T=0;const g2=rem/(1-p.tr);if(g2<=Rt)Rt-=g2;else{failed=true;lateFail++;}}}
+      if(failed){if(record){for(let z=y+1;z<=Y;z++){tot[n*(Y+1)+z]=0;txb[n*(Y+1)+z]=0;}}break;}
+      const i=n*Y+y;
+      T*=wc*R.rc[i]+(1-wc)*(p.ts*R.rs[i]+(1-p.ts)*R.rb[i]);
+      Rt*=p.rs*R.rs[i]+(1-p.rs)*R.rb[i];
+      if(record){tot[n*(Y+1)+y+1]=T+Rt;txb[n*(Y+1)+y+1]=T;}
+    }
+    if(!failed)ok++;
+  }
+  return{rate:ok/N,bridge:bridgeFail/N,late:lateFail/N,tot,txb};
+}
+const succ=(p,R,s,f)=>simulate(p,R,s,f,false).rate;
+function spendFor(p,R,target,f,it=26){
+  let lo=0,hi=(p.tax+p.cash+p.ret)*f*0.15+p.inc+1000;
+  for(let k=0;k<12&&succ(p,R,hi,f)>=target;k++)hi*=2;
+  if(succ(p,R,0,f)<target)return 0;
+  for(let k=0;k<it;k++){const m=(lo+hi)/2;if(succ(p,R,m,f)>=target)lo=m;else hi=m;}
+  return lo;
+}
+function scaleFor(p,R,target,s,lo,hi,it=26){
+  if(succ(p,R,s,hi)<target)return null;
+  if(succ(p,R,s,lo)>=target)return lo;
+  for(let k=0;k<it;k++){const m=(lo+hi)/2;if(succ(p,R,s,m)>=target)hi=m;else lo=m;}
+  return hi;
+}
+function solve(p,R,it){
+  const now=succ(p,R,p.spend,1),rec=spendFor(p,R,p.gT,1,it);
+  let fL=null,fU=null,sL=null,sU=null,belowL=now<p.gL,aboveU=now>=p.gU;
+  if(!belowL){fL=scaleFor(p,R,p.gL,p.spend,0.02,1,it);if(fL!=null&&fL<=0.02)fL=null;}
+  if(!aboveU)fU=scaleFor(p,R,p.gU,p.spend,1,25,it);
+  if(fL!=null)sL=spendFor(p,R,p.gT,fL,it);
+  if(fU!=null)sU=spendFor(p,R,p.gT,fU,it);
+  return{now,rec,fL,fU,sL,sU,belowL,aboveU};
+}
+
+// ---------- formatting ----------
+const fmt=v=>v==null?"–":"$"+Math.round(v).toLocaleString("en-US");
+const fmtK=v=>{if(v==null)return"–";const a=Math.abs(v);return a>=1e6?"$"+(v/1e6).toFixed(2)+"M":"$"+Math.round(v/1e3)+"k";};
+const pct=v=>(v*100).toFixed(0)+"%";
+const round100=v=>Math.round(v/100)*100;
+const round1k=v=>Math.round(v/1000)*1000;
+
+// ---------- main calc ----------
+let lastRec=null,runId=0;
+function calculate(){
+  syncControls();
+  const p=readInputs(),err=validate(p),st=$("status");
+  if(err){st.textContent=err;st.className="status warn";return;}
+  st.className="status";st.textContent="Calculating…";
+  $("run").disabled=true;
+  const my=++runId;
+  setTimeout(()=>{
+    if(my!==runId)return;
+    const t0=performance.now(),R=buildReturns(p),total=p.tax+p.cash+p.ret;
+    const now=simulate(p,R,p.spend,1,true),r=solve(p,R,26);lastRec=r.rec;
+    render(p,now,total,r);
+    const lbl=p.src==="custom"?"Custom assumptions":`${p.src==="hist"?"Historical":"Projected"}, ${LEVELS[p.lvl].toLowerCase()}`;
+    st.textContent=`${lbl} · ${p.sims.toLocaleString()} simulations, ${p.years} years, ${Math.round(performance.now()-t0)} ms`;
+    $("run").disabled=false;
+  },20);
+}
+
+function render(p,now,total,r){
+  const {rec,fL,fU,sL,sU,belowL,aboveU}=r;
+  $("results").hidden=false;
+  const lowV=fL!=null?fL*total:null,upV=fU!=null?fU*total:null;
+  $("nowSucc").textContent=pct(now.rate)+" success";
+  $("nowText").textContent=`At ${fmt(p.spend)}/yr on ${fmt(total)}. Spending for ${pct(p.gT)} success: ${fmt(round100(rec))}.`;
+  if(belowL){$("cTrig").textContent="Already below";$("cText").textContent=`You're under the ${pct(p.gL)} guardrail now. Spending for ${pct(p.gT)}: ${fmt(round100(rec))}.`;}
+  else if(fL==null){$("cTrig").textContent="None";$("cText").textContent="Success stays above the lower guardrail even after a 98% drop.";}
+  else{$("cTrig").textContent=fmt(round1k(lowV));$("cText").textContent=`A ${pct(1-fL)} drop. Cut spending to ${fmt(round100(sL))} (${((sL/p.spend-1)*100).toFixed(1)}%).`;}
+  if(aboveU){$("uTrig").textContent="Already above";$("uText").textContent=`You're over the ${pct(p.gU)} guardrail now. Spending for ${pct(p.gT)}: ${fmt(round100(rec))}.`;}
+  else if(fU==null){$("uTrig").textContent="Out of range";$("uText").textContent=`Even 25× your portfolio doesn't reach ${pct(p.gU)}; check the bridge-failure rate below.`;}
+  else{$("uTrig").textContent=fmt(round1k(upV));$("uText").textContent=`A ${pct(fU-1)} gain. Raise spending to ${fmt(round100(sU))} (+${((sU/p.spend-1)*100).toFixed(1)}%).`;}
+  let rule="";
+  if(belowL||aboveU){rule=`Your current spending sits outside the guardrails. Setting spending to ${fmt(round100(rec))} would put you back at ${pct(p.gT)} success; use the button on the left, then recalculate to get triggers.`;}
+  else{rule="Check your total portfolio (taxable, cash and retirement accounts) each quarter. ";
+    if(lowV!=null)rule+=`If it falls below ${fmt(round1k(lowV))}, cut spending to ${fmt(round100(sL))}. `;
+    if(upV!=null)rule+=`If it rises above ${fmt(round1k(upV))}, raise spending to ${fmt(round100(sU))}. `;
+    rule+="After any change, and at least yearly, re-run this with new balances and age.";}
+  $("rule").textContent=rule;
+  const Y=p.years,N=p.sims,accessIdx=Math.min(Y,Math.max(0,Math.ceil(p.access-p.age)));
+  const col=(arr,y)=>{const a=new Float64Array(N);for(let n=0;n<N;n++)a[n]=arr[n*(Y+1)+y];a.sort();return a;};
+  const q=(a,x)=>a[Math.min(N-1,Math.floor(x*(N-1)))];
+  const atAccess=col(now.tot,accessIdx),atEnd=col(now.tot,Y),taxAtAccess=col(now.txb,accessIdx);
+  const wr=total>0?p.spend/total:0,taxWr=(p.tax+p.cash)>0?p.spend/(1-p.tt)/(p.tax+p.cash):0;
+  const mixS=(p.tax*p.ts+p.ret*p.rs)/total;
+  $("stats").innerHTML=
+    `<div>Overall allocation<b>${pct(mixS)} stocks</b>${pct((p.tax*(1-p.ts)+p.ret*(1-p.rs))/total)} bonds, ${pct(p.cash/total)} cash</div>`+
+    `<div>Bridge failures<b>${pct(now.bridge)}</b>taxable ran out before ${p.access}</div>`+
+    `<div>Later failures<b>${pct(now.late)}</b>ran out after access</div>`+
+    `<div>Withdrawal rate<b>${(wr*100).toFixed(2)}%</b>of total; ${(taxWr*100).toFixed(1)}% of taxable, gross</div>`+
+    `<div>Median taxable at ${p.access}<b>${fmtK(q(taxAtAccess,0.5))}</b></div>`+
+    `<div>Median total at ${p.access}<b>${fmtK(q(atAccess,0.5))}</b>10th pct ${fmtK(q(atAccess,0.1))}</div>`+
+    `<div>Median total at ${p.endAge}<b>${fmtK(q(atEnd,0.5))}</b>10th pct ${fmtK(q(atEnd,0.1))}</div>`;
+  const track=$("track"),labels=$("roadLabels");
+  const pts=[total];if(lowV!=null)pts.push(lowV);if(upV!=null)pts.push(upV);
+  const mn=Math.min(...pts)*0.8,mx=Math.max(...pts)*1.12,pos=v=>((v-mn)/(mx-mn))*100;
+  const lp=lowV!=null?pos(lowV):(belowL?pos(total)+8:0),up=upV!=null?pos(upV):(aboveU?pos(total)-8:100);
+  track.innerHTML=`<div class="zone cut" style="width:${Math.max(0,lp)}%"></div><div class="zone safe" style="width:${Math.max(0,up-lp)}%"></div><div class="zone raise" style="flex:1"></div>`+
+    (lowV!=null?`<div class="rail cut" style="left:${lp}%"></div>`:"")+(upV!=null?`<div class="rail raise" style="left:${up}%"></div>`:"")+
+    `<div class="you" style="left:${pos(total)}%"></div>`;
+  let lab=`<span style="left:${pos(total)}%"><b>${fmtK(total)}</b>today</span>`;
+  if(lowV!=null)lab+=`<span style="left:${Math.max(8,lp)}%"><b>${fmtK(lowV)}</b>cut</span>`;
+  if(upV!=null)lab+=`<span style="left:${Math.min(92,up)}%"><b>${fmtK(upV)}</b>raise</span>`;
+  labels.innerHTML=lab;
+  drawChart(p,now,col,q);
+}
+
+function drawChart(p,now,col,q){
+  const Y=p.years,W=680,H=260,L=56,Rm=12,T=12,B=28,p10=[],p50=[],p90=[],t50=[];
+  for(let y=0;y<=Y;y++){const a=col(now.tot,y);p10.push(q(a,0.1));p50.push(q(a,0.5));p90.push(q(a,0.9));t50.push(q(col(now.txb,y),0.5));}
+  const ymax=Math.max(...p90)*1.05||1,x=y=>L+(y/Y)*(W-L-Rm),yy=v=>T+(1-v/ymax)*(H-T-B);
+  const line=a=>a.map((v,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+yy(v).toFixed(1)).join(" ");
+  const band=line(p90)+" "+p10.map((v,i)=>"L"+x(p10.length-1-i).toFixed(1)+" "+yy(p10[p10.length-1-i]).toFixed(1)).join(" ")+" Z";
+  let grid="";for(let k=0;k<=4;k++){const v=ymax*k/4,yv=yy(v);grid+=`<line x1="${L}" x2="${W-Rm}" y1="${yv}" y2="${yv}" stroke="var(--line)"/><text x="${L-6}" y="${yv+4}" text-anchor="end" font-size="11" fill="var(--muted)">${fmtK(v)}</text>`;}
+  let xt="";const stp=Y>40?10:5;for(let y=0;y<=Y;y+=stp){xt+=`<text x="${x(y)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${Math.round(p.age+y)}</text>`;}
+  const ax=x(Math.min(Y,Math.max(0,p.access-p.age)));
+  $("chart").innerHTML=grid+xt+`<path d="${band}" fill="var(--safe-soft)"/>`+
+    `<line x1="${ax}" x2="${ax}" y1="${T}" y2="${H-B}" stroke="var(--muted)" stroke-dasharray="4 4"/>`+
+    `<path d="${line(t50)}" fill="none" stroke="var(--cut)" stroke-width="2" stroke-dasharray="6 4"/>`+
+    `<path d="${line(p50)}" fill="none" stroke="var(--safe)" stroke-width="2.5"/>`;
+}
+
+function updateMix(){
+  const tax=num("tax"),cash=num("cash"),ret=num("ret"),ts=clamp01(num("tStock")/100),rs=clamp01(num("rStock")/100),tot=tax+cash+ret,el=$("mix");
+  if(tot<=0){el.textContent="";return;}
+  const m=overallMix(),tt=tax+cash,P=v=>Math.round(v*100)+"%";
+  const tS=tt>0?tax*ts/tt:0,tB=tt>0?tax*(1-ts)/tt:0,tC=tt>0?cash/tt:0;
+  el.innerHTML=`<div class="mixbar"><span style="width:${m.s*100}%;background:var(--safe)"></span><span style="width:${m.b*100}%;background:var(--raise)"></span><span style="width:${m.c*100}%;background:var(--cut)"></span></div>`+
+   `<p><span class="k" style="background:var(--safe)"></span>Stocks ${P(m.s)} &nbsp; <span class="k" style="background:var(--raise)"></span>Bonds ${P(m.b)} &nbsp; <span class="k" style="background:var(--cut)"></span>Cash ${P(m.c)} of total</p>`+
+   `<p>Taxable side: ${P(tS)} stocks, ${P(tB)} bonds, ${P(tC)} cash. Retirement: ${P(rs)} / ${P(1-rs)}.</p>`;
+}
+
+let timer=null;
+$("f").addEventListener("input",e=>{
+  if(e.target.classList&&e.target.classList.contains("ret"))$("src").value="custom";
+  save();updateMix();clearTimeout(timer);timer=setTimeout(calculate,500);
+});
+$("run").addEventListener("click",calculate);
+$("useRec").addEventListener("click",()=>{if(lastRec!=null){$("spend").value=round100(lastRec);save();calculate();}});
+$("reset").addEventListener("click",()=>{FIELDS.forEach(id=>$(id).value=DEFAULTS[id]);save();updateMix();calculate();});
+updateMix();
+calculate();
+</script>
+</body>
+</html>
