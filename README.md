@@ -20,10 +20,10 @@ This tool is for **educational and illustrative purposes only**. It is not finan
 2. **Spending.** Pick a mode: "I know my spending" solves for your odds of success at a given withdrawal amount; "I know my target odds" solves for the spending that hits a target success rate instead.
 3. **Guardrails.** Set the target success % and the lower/upper guardrails around it. These define the cut and raise triggers reported in the results.
 4. **Market assumptions.** Choose Global or US stocks, then a return source:
-   - **Historical** samples real (inflation-adjusted) return windows sized to your plan length from 1928–2025; Pessimistic/Consensus/Optimistic pick the worst, average, or best window for your mix.
+   - **Historical** samples real (inflation-adjusted) return windows sized to your plan length — US stocks uses 1928–2025 data, Global stocks blends in real developed-ex-US data that only reaches back to 1991 (see [data/exus-returns.json](#dataexus-returnsjson) below); Pessimistic/Consensus/Optimistic pick the worst, average, or best window for your mix.
    - **Projected** uses current 10–15yr forecasts from several firms; Pessimistic/Consensus/Optimistic pick the lowest, average, or highest.
    - **Custom** lets you type in your own mean/volatility/correlation assumptions directly (opens the advanced section automatically).
-5. **Read the results.** The three cards show the portfolio values at which you'd cut spending, where you stand today, and where you'd raise spending, plus your odds of success at your current spending. The chart below shows the Monte Carlo 10th–90th percentile band alongside dotted lines for the worst/typical/best *actual* historical period of your plan length — a check on sequence-of-returns risk that the randomized Monte Carlo band can understate.
+5. **Read the results.** The three cards show the portfolio values at which you'd cut spending, where you stand today, and where you'd raise spending, plus your odds of success at your current spending. The chart below shows the Monte Carlo 10th–90th percentile band alongside dotted lines for the worst/typical/best *actual* historical period of your plan length — a check on sequence-of-returns risk that the randomized Monte Carlo band can understate. For longer plans the worst/best lines drop off first (too few distinct historical periods left to trust an extreme pick), then "typical" too once the plan is longer than any period the data can replay.
 6. **Re-run regularly.** This is a point-in-time snapshot, not a set-and-forget plan. Re-check your total portfolio against the cut/raise triggers each quarter, and re-run the whole calculation — with updated balances and age — at least once a year or after any spending change.
 
 ## Running locally
@@ -42,7 +42,8 @@ then visit `http://localhost:8000`.
 index.html                   markup, inputs, "How it's calculated" notes
 css/styles.css                styling
 data/
-  historical-returns.json     annual nominal stock/bond/cash/inflation, 1928–
+  historical-returns.json     annual nominal US stock/bond/cash/inflation, 1928–
+  exus-returns.json           annual nominal developed ex-US stock return, 1991–
   market-assumptions.json     projected (CMA) forecasts and volatility/correlation assumptions
 js/
   main.js                     form wiring, persistence, orchestration
@@ -78,8 +79,17 @@ One row per year: `{ "year", "stock", "cash", "bond", "inflation" }`, all nomina
 | `bondForecasts` | US aggregate bond 10–15yr projected return, one entry per firm | Same reports as `stockForecasts` |
 | `globalStockForecasts` | Each firm's US/developed-ex-US/emerging (or direct global) split | Same reports as `stockForecasts`; not every firm publishes every cut — see `js/assumptions.js`'s `globalStocks()` for how missing splits are approximated |
 
-### Historical stock haircut (`index.html`, `hc` field)
+When updating `market-assumptions.json`, replace each firm's `value` with its latest published figure (add/remove firms if a report is discontinued or a new one adopted), and sanity-check the new numbers against the "How it's calculated" text in `index.html`, which lists the same figures inline for users.
 
-Not part of either JSON file — it's the default value on the "Historical stock haircut %" input, applied to each year's US real return when the Historical scenario is set to Global stocks (see `histWindows()`/`cohortReturns()` in `js/assumptions.js`). Default is **2.2%/yr**, from the **[UBS Global Investment Returns Yearbook](https://www.ubs.com/global/en/investment-bank/insights-and-data/articles/global-investment-returns-yearbook-2026.html)** (formerly Credit Suisse; built on the Dimson-Marsh-Staunton database) — the standard reference for "since 1900" cross-country equity returns. Consistently across the 2023–2026 editions: US equities ≈6.5%/yr real, world ex-US ≈4.3%/yr real, a ≈2.2%/yr gap. Revisit if a future edition's since-1900 figures shift materially; don't rebase this off recent fund history (e.g. VTI vs. VXUS) — the last decade's gap has run far wider (~5%/yr) than the long-run average because of the recent US mega-cap-tech-driven regime, which is exactly the kind of recency bias the long-run figure is meant to avoid.
+### `data/exus-returns.json`
 
-When updating, replace each firm's `value` with its latest published figure (add/remove firms if a report is discontinued or a new one adopted), and sanity-check the new numbers against the "How it's calculated" text in `index.html`, which lists the same figures inline for users.
+One row per year: `{ "year", "stock" }`, nominal %. This is the equity leg used for **Historical + Global stocks**: each year's stock return is blended between this and the corresponding year of `historical-returns.json`'s US stock return, at the "US share of global stocks %" weight (`usW`) — see `dataset()` in `js/assumptions.js`. Bonds and cash always come from `historical-returns.json` regardless of the stock-market toggle; there's no ex-US bond/cash series.
+
+**Source:** [Kenneth French Data Library](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html) (Dartmouth), "Fama/French Developed ex US 3 Factors," annual block — raw zip: [Developed_ex_US_3_Factors_CSV.zip](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/Developed_ex_US_3_Factors_CSV.zip). Value is `Mkt-RF + RF` from that file (developed-ex-US market return). Sourced from MSCI through 2006 and Bloomberg from 2007 on. Chosen over MSCI EAFE/World-ex-USA directly (which have a longer back-history, to 1969–70) specifically because this is the dataset most academic research actually uses — the tradeoff is a shorter series.
+
+**Coverage starts in 1991** (the file's first full annual row; monthly data starts July 1990) — it does not reach back to 1928 like the US dataset. This is a real, load-bearing limitation, not just a data-freshness note:
+- `TIER1` in `js/assumptions.js` (`{ us: 75, global: 20 }`) and the dataset lengths it's compared against (98 years of US data, 35 years of ex-US data) together drive how much cohort detail is shown — see the "How it's calculated" bullet on cohort tiers in `index.html` for the exact thresholds, and keep both in sync if either dataset's length changes.
+- **Global-stocks historical scenarios can never see the Great Depression, WWII, or any other pre-1991 crash** — those only appear when US stocks is selected. The worst Global-stocks cohort is bounded by whatever the worst 1991–2025 period was, not history's actual worst case.
+- This is developed-market data only; it excludes emerging markets (~10% of global market cap today).
+
+Update by re-downloading the zip and re-extracting the annual block when French republishes (periodically, not on a fixed schedule); append new final year(s), don't restate prior years.

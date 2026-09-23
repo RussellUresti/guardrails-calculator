@@ -3,16 +3,27 @@ import { mean, sd, corr, arithFromGeo } from "./stats.js";
 
 export const LEVELS = { pess: "Pessimistic", cons: "Consensus", opt: "Optimistic" };
 
-let HIST = null; // array of {year, stock, cash, bond, inflation}, nominal %
-let CMA = null;  // capital market assumptions (projected forecasts)
+// window length above which a "worst/best" pick is too thin a sample to trust (still show "typical")
+export const TIER1 = { us: 75, global: 20 };
 
-// converts raw nominal HIST rows into real (inflation-adjusted) decimal returns
-export function init(historicalReturns, marketAssumptions) {
+let HIST = null;      // array of {y, s, c, b} real decimal returns, US market, 1928-
+let HIST_EXUS = null; // array of {y, s} real decimal returns, developed ex-US market, 1991-
+let HIST_BY_YEAR = null;
+let CMA = null;       // capital market assumptions (projected forecasts)
+
+// converts raw nominal rows into real (inflation-adjusted) decimal returns
+export function init(historicalReturns, marketAssumptions, exusReturns) {
+  const inflationByYear = new Map(historicalReturns.map(r => [r.year, r.inflation]));
   HIST = historicalReturns.map(({ year, stock, cash, bond, inflation }) => ({
     y: year,
     s: (1 + stock / 100) / (1 + inflation / 100) - 1,
     c: (1 + cash / 100) / (1 + inflation / 100) - 1,
     b: (1 + bond / 100) / (1 + inflation / 100) - 1,
+  }));
+  HIST_BY_YEAR = new Map(HIST.map(x => [x.y, x]));
+  HIST_EXUS = exusReturns.map(({ year, stock }) => ({
+    y: year,
+    s: (1 + stock / 100) / (1 + inflationByYear.get(year) / 100) - 1,
   }));
   CMA = marketAssumptions;
 }
@@ -21,7 +32,6 @@ export function eqOpts() {
   return {
     eq: document.getElementById("eq").value,
     usW: Math.min(1, Math.max(0, (parseFloat(document.getElementById("usW").value) || 0) / 100)),
-    hc: (parseFloat(document.getElementById("hc").value) || 0) / 100,
   };
 }
 
@@ -33,8 +43,6 @@ export function globalStocks(usW) {
   });
 }
 
-export const hcTxt = o => (o.hc * 100).toFixed(2).replace(/\.?0+$/, "");
-
 export function overallMix(tax, cash, ret, tStockPct, rStockPct) {
   const ts = Math.min(1, Math.max(0, tStockPct / 100));
   const rs = Math.min(1, Math.max(0, rStockPct / 100));
@@ -42,12 +50,29 @@ export function overallMix(tax, cash, ret, tStockPct, rStockPct) {
   return { s: (tax * ts + ret * rs) / tot, b: (tax * (1 - ts) + ret * (1 - rs)) / tot, c: cash / tot };
 }
 
-// keep window length long enough for a stable read, short enough to leave enough overlapping windows in the 98-year dataset
-export const clampWindow = years => Math.max(10, Math.min(75, Math.round(years)));
+// the working return series for a given equity setting: US stocks/bonds/cash as-is, or (for global)
+// each year's stock return blended between the real US and real developed-ex-US market at usW, with
+// bonds/cash still US-sourced (there's no ex-US bond/cash series). Ex-US real data only covers
+// 1991-, so "global" windows/cohorts can never reach further back than that — see TIER1/histSpan.
+export function dataset(opts) {
+  if (!opts || opts.eq !== "global") return HIST;
+  const usW = opts.usW;
+  return HIST_EXUS.map(x => {
+    const us = HIST_BY_YEAR.get(x.y);
+    return { y: x.y, s: usW * us.s + (1 - usW) * x.s, b: us.b, c: us.c };
+  });
+}
+
+// how many years of data are actually available for the current equity setting
+export function histSpan(opts) {
+  return (opts && opts.eq === "global" ? HIST_EXUS : HIST).length;
+}
+
+// keep window length long enough for a stable read, short enough to leave enough overlapping windows
+export const clampWindow = (years, ceiling) => Math.max(10, Math.min(ceiling, Math.round(years)));
 
 export function histWindows(mix, opts, L = 50) {
-  const out = [], hc = opts && opts.eq === "global" ? opts.hc : 0;
-  const D = hc ? HIST.map(x => ({ ...x, s: x.s - hc })) : HIST;
+  const out = [], D = dataset(opts);
   for (let k = 0; k + L <= D.length; k++) {
     const w = D.slice(k, k + L), S = w.map(x => x.s), B = w.map(x => x.b), C = w.map(x => x.c);
     let g = 1; w.forEach(x => g *= 1 + mix.s * x.s + mix.b * x.b + mix.c * x.c);
@@ -59,9 +84,7 @@ export function histWindows(mix, opts, L = 50) {
 // raw yearly real return series (as growth factors) for every historical window of exactly `Y` years,
 // unclamped: this is a literal replay of the actual chronological sequence, not a summary statistic
 export function cohortReturns(opts, Y) {
-  const hc = opts && opts.eq === "global" ? opts.hc : 0;
-  const D = hc ? HIST.map(x => ({ ...x, s: x.s - hc })) : HIST;
-  const out = [];
+  const D = dataset(opts), out = [];
   for (let k = 0; k + Y <= D.length; k++) {
     const w = D.slice(k, k + Y), rs = new Float64Array(Y), rb = new Float64Array(Y), rc = new Float64Array(Y);
     w.forEach((x, i) => { rs[i] = 1 + x.s; rb[i] = 1 + x.b; rc[i] = 1 + x.c; });
@@ -72,8 +95,10 @@ export function cohortReturns(opts, Y) {
 
 export function histPreset(level, mix, opts, years) {
   opts = opts || eqOpts();
-  const L = clampWindow(years || 50);
-  const W = histWindows(mix, opts, L), hn = opts.eq === "global" && opts.hc ? `; US stocks less ${hcTxt(opts)}%/yr as a global proxy` : "";
+  const ceiling = TIER1[opts.eq === "global" ? "global" : "us"];
+  const L = clampWindow(years || 50, ceiling);
+  const W = histWindows(mix, opts, L);
+  const hn = opts.eq === "global" ? `; ${Math.round(opts.usW * 100)}% US / ${Math.round((1 - opts.usW) * 100)}% developed ex-US blend` : "";
   if (level === "cons") {
     const o = {};
     ["sm", "ss", "bm", "bs", "cm", "cs", "rho"].forEach(k => o[k] = mean(W.map(w => w[k])));

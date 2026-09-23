@@ -13,7 +13,7 @@ export function drawChart(p, now, col, q, coh) {
   const Y = p.years, W = 680, H = 260, L = 56, Rm = 12, T = 12, B = 28, p10 = [], p50 = [], p90 = [], t50 = [];
   for (let y = 0; y <= Y; y++) { const a = col(now.tot, y); p10.push(q(a, 0.1)); p50.push(q(a, 0.5)); p90.push(q(a, 0.9)); t50.push(q(col(now.txb, y), 0.5)); }
 
-  const cohortMax = coh ? Math.max(...coh.best.path, ...coh.median.path, ...coh.worst.path) : 0;
+  const cohortMax = coh ? Math.max(...[coh.best, coh.median, coh.worst].filter(Boolean).flatMap(c => Array.from(c.path))) : 0;
   const ymax = Math.max(...p90, ...p50, ...t50, cohortMax, 1);
 
   // the 90th-percentile tail can run into tens of millions while the median/taxable lines stay small.

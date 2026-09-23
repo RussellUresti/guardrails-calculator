@@ -33,8 +33,11 @@ export function render(p, now, total, r, coh) {
   const atAccess = col(now.tot, accessIdx), atEnd = col(now.tot, Y), taxAtAccess = col(now.txb, accessIdx);
   const wr = total > 0 ? p.spend / total : 0, taxWr = (p.tax + p.cash) > 0 ? p.spend / (1 - p.tt) / (p.tax + p.cash) : 0;
   const mixS = (p.tax * p.ts + p.ret * p.rs) / total;
+  const cohLabel = c => c.failYear >= 0 ? `Fails at age ${Math.round(p.age + c.failYear)}` : fmtK(c.end);
   const cohStat = !coh ? "" :
-    `<div>Worst actual cohort<b>${coh.worst.failYear >= 0 ? `Fails at age ${Math.round(p.age + coh.worst.failYear)}` : fmtK(coh.worst.end)}</b>${coh.worst.from}–${coh.worst.to}${coh.worst.failYear >= 0 ? "" : ", never fails"}</div>` +
+    (coh.worst
+      ? `<div>Worst actual cohort<b>${cohLabel(coh.worst)}</b>${coh.worst.from}–${coh.worst.to}${coh.worst.failYear >= 0 ? "" : ", never fails"}</div>`
+      : `<div>Typical actual cohort<b>${cohLabel(coh.median)}</b>${coh.median.from}–${coh.median.to}${coh.median.failYear >= 0 ? "" : ", never fails"}</div>`) +
     `<div>Historical cohorts<b>${coh.failCount}/${coh.K}</b>actual ${p.years}-year periods ran out</div>`;
   $("stats").innerHTML =
     `<div>Overall allocation<b>${pct(mixS)} stocks</b>${pct((p.tax * (1 - p.ts) + p.ret * (1 - p.rs)) / total)} bonds, ${pct(p.cash / total)} cash</div>` +
@@ -57,9 +60,12 @@ export function render(p, now, total, r, coh) {
   if (upV != null) lab += `<span style="left:${Math.min(92, up)}%"><b>${fmtK(upV)}</b>raise</span>`;
   labels.innerHTML = lab;
   drawChart(p, now, col, q, coh);
-  $("legBest").textContent = coh ? `Best actual cohort (${coh.best.from}–${coh.best.to})` : "Best actual cohort";
-  $("legTypical").textContent = coh ? `Typical actual cohort (${coh.median.from}–${coh.median.to})` : "Typical actual cohort";
-  $("legWorst").textContent = coh ? `Worst actual cohort (${coh.worst.from}–${coh.worst.to})` : "Worst actual cohort";
+  $("legBestRow").style.display = coh && coh.best ? "" : "none";
+  $("legWorstRow").style.display = coh && coh.worst ? "" : "none";
+  $("legTypicalRow").style.display = coh ? "" : "none";
+  if (coh && coh.best) $("legBest").textContent = `Best actual cohort (${coh.best.from}–${coh.best.to})`;
+  if (coh && coh.worst) $("legWorst").textContent = `Worst actual cohort (${coh.worst.from}–${coh.worst.to})`;
+  if (coh) $("legTypical").textContent = `Typical actual cohort (${coh.median.from}–${coh.median.to})`;
 }
 
 export function updateMix() {

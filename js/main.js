@@ -1,12 +1,12 @@
 // ---------- app wiring: form state, persistence, controls, orchestration ----------
 import { $, num, clamp01 } from "./dom.js";
-import { init as initAssumptions, LEVELS, presetFor, histPreset, overallMix, cohortReturns, eqOpts } from "./assumptions.js";
+import { init as initAssumptions, LEVELS, presetFor, histPreset, overallMix, cohortReturns, eqOpts, TIER1, histSpan } from "./assumptions.js";
 import { buildReturns, simulate, solve, spendFor } from "./simulation.js";
 import { render, updateMix } from "./render.js";
 import { round100, fmtK } from "./format.js";
 import { geoOf } from "./stats.js";
 
-const FIELDS = ["age", "access", "endAge", "tax", "cash", "ret", "tStock", "rStock", "mode", "spend", "tt", "tr", "inc", "incAge", "gT", "gL", "gU", "short", "eq", "usW", "hc", "src", "lvl", "hz", "sm", "ss", "bm", "bs", "cm", "cs", "rho", "sims", "seed"];
+const FIELDS = ["age", "access", "endAge", "tax", "cash", "ret", "tStock", "rStock", "mode", "spend", "tt", "tr", "inc", "incAge", "gT", "gL", "gU", "short", "eq", "usW", "src", "lvl", "hz", "sm", "ss", "bm", "bs", "cm", "cs", "rho", "sims", "seed"];
 const DEFAULTS = {};
 FIELDS.forEach(id => DEFAULTS[id] = $(id).value);
 const KEY = "rbg-bridge-inputs-v2";
@@ -48,7 +48,9 @@ function syncControls() {
   $("hzRow").style.display = src === "proj" ? "" : "none";
   const eq = $("eq").value;
   document.querySelectorAll("#eqSeg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === eq));
-  $("usWRow").style.display = eq === "global" ? "" : "none"; $("hcRow").style.display = eq === "global" ? "" : "none";
+  $("usWRow").style.display = eq === "global" ? "" : "none";
+  const cap1 = TIER1[eq === "global" ? "global" : "us"], span = histSpan({ eq });
+  $("endAgeHint").textContent = `worst/typical/best cohorts up to ${cap1}yr; only "typical" up to ${span}yr (the limit of the ${eq === "global" ? "ex-US" : "US"} data); none beyond that`;
   if (src !== "custom") {
     const mix = overallMix(num("tax"), num("cash"), num("ret"), num("tStock"), num("rStock"));
     const pr = presetFor(src, lvl, mix, Math.ceil(num("endAge") - num("age")));
@@ -90,7 +92,6 @@ function readInputs() {
 }
 function validate(p) {
   if (p.endAge <= p.age) return "Plan-through age must be after your current age.";
-  if (p.endAge - p.age > 75) return "Plan length can't exceed 75 years — that's the limit of the historical cohort data (e.g. age 25 to 100).";
   if (!(p.gL < p.gT && p.gT < p.gU)) return "Guardrails must satisfy lower < target < upper.";
   if (p.gU >= 1) return "Upper guardrail must be below 100%.";
   if (p.tt >= 0.9 || p.tr >= 0.8) return "Tax rates look too high to model.";
@@ -100,7 +101,7 @@ function validate(p) {
 
 // ---------- historical cohort replay (literal chronological sequences, for sequence-of-returns context) ----------
 function buildCohorts(p) {
-  const Y = p.years, cohorts = cohortReturns(eqOpts(), Y), K = cohorts.length;
+  const opts = eqOpts(), Y = p.years, cohorts = cohortReturns(opts, Y), K = cohorts.length;
   if (!K) return null;
   const Rc = { rs: new Float64Array(K * Y), rb: new Float64Array(K * Y), rc: new Float64Array(K * Y) };
   cohorts.forEach((c, k) => {
@@ -118,7 +119,14 @@ function buildCohorts(p) {
     return { ...c, path };
   };
   const failCount = ranked.filter(c => c.failYear >= 0).length;
-  return { worst: withPath(ranked[0]), median: withPath(ranked[Math.floor((K - 1) / 2)]), best: withPath(ranked[K - 1]), K, failCount };
+  // beyond TIER1, the pool of cohorts is too thin for "worst"/"best" to mean much — keep only "typical"
+  const showExtremes = Y <= TIER1[opts.eq === "global" ? "global" : "us"];
+  return {
+    worst: showExtremes ? withPath(ranked[0]) : null,
+    median: withPath(ranked[Math.floor((K - 1) / 2)]),
+    best: showExtremes ? withPath(ranked[K - 1]) : null,
+    K, failCount,
+  };
 }
 
 // ---------- main calc ----------
@@ -155,11 +163,12 @@ $("reset").addEventListener("click", () => { FIELDS.forEach(id => $(id).value = 
 
 // ---------- bootstrap ----------
 async function bootstrap() {
-  const [historicalReturns, marketAssumptions] = await Promise.all([
+  const [historicalReturns, marketAssumptions, exusReturns] = await Promise.all([
     fetch("data/historical-returns.json").then(r => r.json()),
     fetch("data/market-assumptions.json").then(r => r.json()),
+    fetch("data/exus-returns.json").then(r => r.json()),
   ]);
-  initAssumptions(historicalReturns, marketAssumptions);
+  initAssumptions(historicalReturns, marketAssumptions, exusReturns);
   loadSaved();
   updateMix();
   calculate();
