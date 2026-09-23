@@ -35,13 +35,11 @@ export function drawChart(p, now, col, q, coh) {
   let grid = ""; gridVals.forEach(v => { const yv = yy(v); grid += `<line x1="${L}" x2="${W - Rm}" y1="${yv}" y2="${yv}" stroke="var(--line)"/><text x="${L - 6}" y="${yv + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${fmtK(v)}</text>`; });
 
   let xt = ""; const stp = Y > 40 ? 10 : 5; for (let y = 0; y <= Y; y += stp) { xt += `<text x="${x(y)}" y="${H - 8}" text-anchor="middle" font-size="11" fill="var(--muted)">${Math.round(p.age + y)}</text>`; }
-  const ax = x(Math.min(Y, Math.max(0, p.access - p.age)));
 
   const cohLine = (c, color) => !c ? "" : `<path d="${line(Array.from(c.path))}" fill="none" stroke="${color}" stroke-width="1.5" stroke-dasharray="1 3" stroke-linecap="round" opacity="0.9"/>`;
   const cohLines = coh ? cohLine(coh.best, "var(--safe)") + cohLine(coh.median, "var(--raise)") + cohLine(coh.worst, "var(--cut)") : "";
 
   document.getElementById("chart").innerHTML = grid + xt + `<path d="${band}" fill="var(--safe-soft)" fill-opacity="0.55"/>` +
-    `<line x1="${ax}" x2="${ax}" y1="${T}" y2="${H - B}" stroke="var(--muted)" stroke-dasharray="4 4"/>` +
     cohLines +
     `<path d="${line(t50)}" fill="none" stroke="var(--cut)" stroke-width="2" stroke-dasharray="6 4"/>` +
     `<path d="${line(p50)}" fill="none" stroke="var(--safe)" stroke-width="2.5"/>`;
