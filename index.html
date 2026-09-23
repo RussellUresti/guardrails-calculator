@@ -109,10 +109,13 @@
     <h2>Total portfolio, today's dollars</h2>
     <div class="chart-wrap"><svg id="chart" viewBox="0 0 680 260" role="img" aria-label="Portfolio projection percentiles"></svg></div>
     <div class="legend">
-      <span><i style="background:var(--safe-soft)"></i>10th–90th percentile</span>
+      <span><i style="background:var(--safe-soft)"></i>10th–90th percentile (Monte Carlo)</span>
       <span><i style="background:var(--safe)"></i>Median total</span>
       <span><i style="background:var(--cut)"></i>Median taxable</span>
       <span><i style="background:var(--muted)"></i>Access age</span>
+      <span><i class="dotted" style="color:var(--safe)"></i>Best actual cohort</span>
+      <span><i class="dotted" style="color:var(--raise)"></i>Typical actual cohort</span>
+      <span><i class="dotted" style="color:var(--cut)"></i>Worst actual cohort</span>
     </div>
     <h2 style="margin-top:22px">How it's calculated</h2>
     <ul class="notes">
@@ -120,6 +123,7 @@
       <li><b>Historical</b> uses Aswath Damodaran's annual US data, 1928–2025 (S&amp;P 500 with dividends, 10-year Treasuries, 3-month T-bills), deflated by CPI. Windows are sized to your plan length (current age to plan-through age, clamped to 10–75 years) and overlap across the full 1928–2025 span. Pessimistic and optimistic are the worst and best windows for <i>your</i> overall stock/bond/cash mix; consensus averages the mean, volatility and correlation across all windows of that length. Each window's mean and volatility then drive the simulation, so the order of good and bad years is randomized rather than replayed.</li>
       <li><b>Projected</b> uses published 10-year (J.P. Morgan: 10–15 year) nominal forecasts for US large caps and US aggregate bonds, converted to real with a 2.4% inflation assumption. Stocks: Research Affiliates 3.1%, Vanguard 4.5% (midpoint of 4–5%), Verus 5.4%, Schwab 5.9%, J.P. Morgan 6.7%. Bonds: Vanguard 4.3% (midpoint), Research Affiliates 4.7%, Schwab 4.8%, J.P. Morgan 4.8%. Cash: Schwab 3.3%. Pessimistic, consensus and optimistic are the lowest, average and highest. Volatility is set to 16.5% for stocks and 6% for bonds.</li>
       <li><b>Global stocks</b> (the default) blend each firm's US and international forecasts at your US weight, with international split 75% developed and 25% emerging. J.P. Morgan publishes a global figure (7.0%) directly; Verus is left out because no international figure was available. Averaging geometric returns this way slightly understates a blended portfolio's compound return. For historical scenarios, each year's S&amp;P 500 real return is reduced by the haircut, since world stocks trailed the US by roughly 1%/yr in long-run data from 1900.</li>
+      <li>The dotted lines are a check on sequence-of-returns risk: unlike the Monte Carlo band, they don't reshuffle years. Each one replays the literal chronological real-return sequence for every possible historical start year of your exact plan length, run through the same spending and tax rules, so a crash that actually happened early in a given period stays early. The worst, "typical" (median-ending) and best of those actual periods are shown; if the worst one sits below the Monte Carlo band, that's a specific historical period whose bad-early-years shape hurt more than the randomized band captures.</li>
       <li>Success means spending is funded every year through the plan age. Before the access age, only taxable and cash can pay the bills. The taxable account keeps the cash reserve at the same share each year. Withdrawals are grossed up by the tax rates you enter.</li>
       <li>Triggers scale all balances together, which approximates a market move. Spending stays constant in real terms inside each simulation, as in the Kitces/Income Lab method. Re-run after any adjustment and at least once a year.</li>
     </ul>

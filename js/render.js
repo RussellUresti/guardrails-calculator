@@ -4,7 +4,7 @@ import { overallMix } from "./assumptions.js";
 import { fmt, fmtK, pct, round100, round1k } from "./format.js";
 import { drawChart } from "./chart.js";
 
-export function render(p, now, total, r) {
+export function render(p, now, total, r, coh) {
   const { rec, fL, fU, sL, sU, belowL, aboveU } = r;
   $("results").hidden = false;
   const lowV = fL != null ? fL * total : null, upV = fU != null ? fU * total : null;
@@ -33,6 +33,9 @@ export function render(p, now, total, r) {
   const atAccess = col(now.tot, accessIdx), atEnd = col(now.tot, Y), taxAtAccess = col(now.txb, accessIdx);
   const wr = total > 0 ? p.spend / total : 0, taxWr = (p.tax + p.cash) > 0 ? p.spend / (1 - p.tt) / (p.tax + p.cash) : 0;
   const mixS = (p.tax * p.ts + p.ret * p.rs) / total;
+  const cohStat = !coh ? "" :
+    `<div>Worst actual cohort<b>${coh.worst.failYear >= 0 ? `Fails at age ${Math.round(p.age + coh.worst.failYear)}` : fmtK(coh.worst.end)}</b>${coh.worst.from}–${coh.worst.to}${coh.worst.failYear >= 0 ? "" : ", never fails"}</div>` +
+    `<div>Historical cohorts<b>${coh.failCount}/${coh.K}</b>actual ${p.years}-year periods ran out</div>`;
   $("stats").innerHTML =
     `<div>Overall allocation<b>${pct(mixS)} stocks</b>${pct((p.tax * (1 - p.ts) + p.ret * (1 - p.rs)) / total)} bonds, ${pct(p.cash / total)} cash</div>` +
     `<div>Bridge failures<b>${pct(now.bridge)}</b>taxable ran out before ${p.access}</div>` +
@@ -40,7 +43,8 @@ export function render(p, now, total, r) {
     `<div>Withdrawal rate<b>${(wr * 100).toFixed(2)}%</b>of total; ${(taxWr * 100).toFixed(1)}% of taxable, gross</div>` +
     `<div>Median taxable at ${p.access}<b>${fmtK(q(taxAtAccess, 0.5))}</b></div>` +
     `<div>Median total at ${p.access}<b>${fmtK(q(atAccess, 0.5))}</b>10th pct ${fmtK(q(atAccess, 0.1))}</div>` +
-    `<div>Median total at ${p.endAge}<b>${fmtK(q(atEnd, 0.5))}</b>10th pct ${fmtK(q(atEnd, 0.1))}</div>`;
+    `<div>Median total at ${p.endAge}<b>${fmtK(q(atEnd, 0.5))}</b>10th pct ${fmtK(q(atEnd, 0.1))}</div>` +
+    cohStat;
   const track = $("track"), labels = $("roadLabels");
   const pts = [total]; if (lowV != null) pts.push(lowV); if (upV != null) pts.push(upV);
   const mn = Math.min(...pts) * 0.8, mx = Math.max(...pts) * 1.12, pos = v => ((v - mn) / (mx - mn)) * 100;
@@ -52,7 +56,7 @@ export function render(p, now, total, r) {
   if (lowV != null) lab += `<span style="left:${Math.max(8, lp)}%"><b>${fmtK(lowV)}</b>cut</span>`;
   if (upV != null) lab += `<span style="left:${Math.min(92, up)}%"><b>${fmtK(upV)}</b>raise</span>`;
   labels.innerHTML = lab;
-  drawChart(p, now, col, q);
+  drawChart(p, now, col, q, coh);
 }
 
 export function updateMix() {

@@ -56,6 +56,20 @@ export function histWindows(mix, opts, L = 50) {
   return out;
 }
 
+// raw yearly real return series (as growth factors) for every historical window of exactly `Y` years,
+// unclamped: this is a literal replay of the actual chronological sequence, not a summary statistic
+export function cohortReturns(opts, Y) {
+  const hc = opts && opts.eq === "global" ? opts.hc : 0;
+  const D = hc ? HIST.map(x => ({ ...x, s: x.s - hc })) : HIST;
+  const out = [];
+  for (let k = 0; k + Y <= D.length; k++) {
+    const w = D.slice(k, k + Y), rs = new Float64Array(Y), rb = new Float64Array(Y), rc = new Float64Array(Y);
+    w.forEach((x, i) => { rs[i] = 1 + x.s; rb[i] = 1 + x.b; rc[i] = 1 + x.c; });
+    out.push({ from: w[0].y, to: w[Y - 1].y, rs, rb, rc });
+  }
+  return out;
+}
+
 export function histPreset(level, mix, opts, years) {
   opts = opts || eqOpts();
   const L = clampWindow(years || 50);

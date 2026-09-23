@@ -19,6 +19,7 @@ export function simulate(p, R, spend, f, record) {
   const wc = (p.tax + p.cash) > 0 ? p.cash / (p.tax + p.cash) : 0;
   let ok = 0, bridgeFail = 0, lateFail = 0;
   const tot = record ? new Float64Array(N * (Y + 1)) : null, txb = record ? new Float64Array(N * (Y + 1)) : null;
+  const failYear = record ? new Int32Array(N).fill(-1) : null;
   const penRate = 1 - p.tr - 0.10;
   for (let n = 0; n < N; n++) {
     let T = T0, Rt = Ret0, failed = false;
@@ -39,7 +40,7 @@ export function simulate(p, R, spend, f, record) {
         if (gross <= T) { T -= gross; }
         else { const rem = (gross - T) * (1 - p.tt); T = 0; const g2 = rem / (1 - p.tr); if (g2 <= Rt) Rt -= g2; else { failed = true; lateFail++; } }
       }
-      if (failed) { if (record) { for (let z = y + 1; z <= Y; z++) { tot[n * (Y + 1) + z] = 0; txb[n * (Y + 1) + z] = 0; } } break; }
+      if (failed) { if (record) { failYear[n] = y; for (let z = y + 1; z <= Y; z++) { tot[n * (Y + 1) + z] = 0; txb[n * (Y + 1) + z] = 0; } } break; }
       const i = n * Y + y;
       T *= wc * R.rc[i] + (1 - wc) * (p.ts * R.rs[i] + (1 - p.ts) * R.rb[i]);
       Rt *= p.rs * R.rs[i] + (1 - p.rs) * R.rb[i];
@@ -47,7 +48,7 @@ export function simulate(p, R, spend, f, record) {
     }
     if (!failed) ok++;
   }
-  return { rate: ok / N, bridge: bridgeFail / N, late: lateFail / N, tot, txb };
+  return { rate: ok / N, bridge: bridgeFail / N, late: lateFail / N, tot, txb, failYear };
 }
 
 export const succ = (p, R, s, f) => simulate(p, R, s, f, false).rate;

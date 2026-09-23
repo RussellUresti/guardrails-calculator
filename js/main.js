@@ -1,6 +1,6 @@
 // ---------- app wiring: form state, persistence, controls, orchestration ----------
 import { $, num, clamp01 } from "./dom.js";
-import { init as initAssumptions, LEVELS, presetFor, histPreset, overallMix } from "./assumptions.js";
+import { init as initAssumptions, LEVELS, presetFor, histPreset, overallMix, cohortReturns, eqOpts } from "./assumptions.js";
 import { buildReturns, simulate, solve, spendFor } from "./simulation.js";
 import { render, updateMix } from "./render.js";
 import { round100 } from "./format.js";
@@ -88,6 +88,29 @@ function validate(p) {
   return null;
 }
 
+// ---------- historical cohort replay (literal chronological sequences, for sequence-of-returns context) ----------
+function buildCohorts(p) {
+  const Y = p.years, cohorts = cohortReturns(eqOpts(), Y), K = cohorts.length;
+  if (!K) return null;
+  const Rc = { rs: new Float64Array(K * Y), rb: new Float64Array(K * Y), rc: new Float64Array(K * Y) };
+  cohorts.forEach((c, k) => {
+    for (let y = 0; y < Y; y++) { const i = k * Y + y; Rc.rs[i] = c.rs[y]; Rc.rb[i] = c.rb[y]; Rc.rc[i] = c.rc[y]; }
+  });
+  const cs = simulate({ ...p, sims: K }, Rc, p.spend, 1, true);
+  // rank worst→best: a failure always ranks below a survivor, and an earlier failure is worse than a later one
+  const ranked = cohorts.map((c, k) => {
+    const end = cs.tot[k * (Y + 1) + Y], failYear = cs.failYear[k];
+    return { ...c, k, end, failYear, rank: failYear >= 0 ? failYear : Y + 1 + end / 1e12 };
+  }).sort((a, b) => a.rank - b.rank);
+  const withPath = c => {
+    const path = new Float64Array(Y + 1);
+    for (let y = 0; y <= Y; y++) path[y] = cs.tot[c.k * (Y + 1) + y];
+    return { ...c, path };
+  };
+  const failCount = ranked.filter(c => c.failYear >= 0).length;
+  return { worst: withPath(ranked[0]), median: withPath(ranked[Math.floor((K - 1) / 2)]), best: withPath(ranked[K - 1]), K, failCount };
+}
+
 // ---------- main calc ----------
 let runId = 0;
 function calculate() {
@@ -104,8 +127,8 @@ function calculate() {
       p.spend = round100(spendFor(p, R, p.gT, 1, 26));
       $("spend").value = p.spend; save();
     }
-    const now = simulate(p, R, p.spend, 1, true), r = solve(p, R, 26);
-    render(p, now, total, r);
+    const now = simulate(p, R, p.spend, 1, true), r = solve(p, R, 26), coh = buildCohorts(p);
+    render(p, now, total, r, coh);
     const lbl = p.src === "custom" ? "Custom assumptions" : `${p.src === "hist" ? "Historical" : "Projected"}, ${LEVELS[p.lvl].toLowerCase()}`;
     st.textContent = `${lbl} · ${p.sims.toLocaleString()} simulations, ${p.years} years, ${Math.round(performance.now() - t0)} ms`;
     $("run").disabled = false;
