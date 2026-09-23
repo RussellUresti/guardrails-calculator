@@ -17,17 +17,20 @@ export function drawChart(p, now, col, q, coh) {
   const ymax = Math.max(...p90, ...p50, ...t50, cohortMax, 1);
 
   // the 90th-percentile tail can run into tens of millions while the median/taxable lines stay small.
-  // a log1p scale (log(v+1)) gives equal visual space to each doubling of value, same as a log scale,
-  // but — unlike a plain log — it still has a finite, well-defined position for $0, which matters here
-  // since failed simulations and failed cohorts genuinely hit zero.
-  const toY = v => Math.log(v + 1), domainMax = toY(ymax) || 1;
-  const x = y => L + (y / Y) * (W - L - Rm), yy = v => T + (1 - toY(v) / domainMax) * (H - T - B);
+  // symlog-style scale: pick a base "step" and give $0-to-step one linear unit of space, then each
+  // doubling above that (step→2step→4step→...) gets that same one unit — so every gridline gap is
+  // visually equal, including the one touching zero. (A plain log(v+1) pivots at $1, which is
+  // meaningless when the data's in the millions: nearly the whole axis ends up spent on "$0 to ~$1M"
+  // since that alone is ~20 doublings from a $1 pivot, squashing the actual millions-range data.)
+  const step = niceStep(ymax / 16);
+  const units = v => v <= step ? v / step : 1 + Math.log2(v / step);
+  const domainMax = units(ymax) || 1;
+  const x = y => L + (y / Y) * (W - L - Rm), yy = v => T + (1 - units(v) / domainMax) * (H - T - B);
   const line = a => a.map((v, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + yy(v).toFixed(1)).join(" ");
   const band = line(p90) + " " + p10.map((v, i) => "L" + x(p10.length - 1 - i).toFixed(1) + " " + yy(p10[p10.length - 1 - i]).toFixed(1)).join(" ") + " Z";
 
-  // gridlines double from a nice base step (0, s, 2s, 4s, 8s, ...) instead of splitting the range evenly,
-  // since evenly-split gridlines would bunch up uselessly at the top of a log-scaled axis
-  const step = niceStep(ymax / 16), gridVals = [0];
+  // gridlines double from that same base step (0, s, 2s, 4s, 8s, ...) instead of splitting the range evenly
+  const gridVals = [0];
   for (let v = step; v < ymax * 1.001; v *= 2) gridVals.push(v);
   let grid = ""; gridVals.forEach(v => { const yv = yy(v); grid += `<line x1="${L}" x2="${W - Rm}" y1="${yv}" y2="${yv}" stroke="var(--line)"/><text x="${L - 6}" y="${yv + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${fmtK(v)}</text>`; });
 
