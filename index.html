@@ -63,27 +63,30 @@
       <button type="button" data-v="global">Global stocks</button><button type="button" data-v="us">US stocks</button>
     </div>
     <input type="hidden" id="eq" value="global">
-    <div class="row" id="usWRow"><label for="usW">US share of global stocks %<span class="hint">a total world index is about 63%</span></label><input id="usW" type="number" step="1" min="0" max="100" value="60"></div>
-    <div class="row" id="hcRow"><label for="hc">Historical stock haircut %<span class="hint">world stocks trailed the US ~1%/yr since 1900</span></label><input id="hc" type="number" step="0.25" min="0" max="5" value="1"></div>
     <div class="seg" id="srcSeg" role="group" aria-label="Return source">
       <button type="button" data-v="custom">Custom</button><button type="button" data-v="hist">Historical</button><button type="button" data-v="proj">Projected</button>
     </div>
     <div class="seg" id="lvlSeg" role="group" aria-label="Scenario">
       <button type="button" data-v="pess">Pessimistic</button><button type="button" data-v="cons">Consensus</button><button type="button" data-v="opt">Optimistic</button>
     </div>
-    <div class="row" id="hzRow"><label for="hz">Apply forecasts for<span class="hint">forecasts cover 10–15 years</span></label>
-      <select id="hz"><option value="all">Every year</option><option value="10">10 years, then historical</option></select></div>
-    <p class="srcnote" id="srcNote"></p>
+    <details class="advanced">
+      <summary>Advanced assumptions</summary>
+      <div class="row" id="usWRow"><label for="usW">US share of global stocks %<span class="hint">a total world index is about 63%</span></label><input id="usW" type="number" step="1" min="0" max="100" value="60"></div>
+      <div class="row" id="hcRow"><label for="hc">Historical stock haircut %<span class="hint">world stocks trailed the US ~1%/yr since 1900</span></label><input id="hc" type="number" step="0.25" min="0" max="5" value="1"></div>
+      <div class="row" id="hzRow"><label for="hz">Apply forecasts for<span class="hint">forecasts cover 10–15 years</span></label>
+        <select id="hz"><option value="all">Every year</option><option value="10">10 years, then historical</option></select></div>
+      <p class="srcnote" id="srcNote"></p>
+      <div class="row"><label for="sm">Stocks, mean real return %<span class="hint" id="smG"></span></label><input id="sm" class="ret" type="number" step="0.05" value="5"></div>
+      <div class="row"><label for="ss">Stocks, volatility %</label><input id="ss" class="ret" type="number" step="0.5" value="17"></div>
+      <div class="row"><label for="bm">Bonds, mean real return %<span class="hint" id="bmG"></span></label><input id="bm" class="ret" type="number" step="0.05" value="1.75"></div>
+      <div class="row"><label for="bs">Bonds, volatility %</label><input id="bs" class="ret" type="number" step="0.5" value="6"></div>
+      <div class="row"><label for="cm">Cash, mean real return %</label><input id="cm" class="ret" type="number" step="0.05" value="0.5"></div>
+      <div class="row"><label for="cs">Cash, volatility %</label><input id="cs" class="ret" type="number" step="0.25" value="1"></div>
+      <div class="row"><label for="rho">Stock/bond correlation</label><input id="rho" class="ret" type="number" step="0.05" min="-1" max="1" value="0.1"></div>
+      <div class="row"><label for="sims">Simulations</label><input id="sims" type="number" step="500" min="500" max="10000" value="3000"></div>
+      <div class="row"><label for="seed">Random seed</label><input id="seed" type="number" step="1" value="42"></div>
+    </details>
     <input type="hidden" id="src" value="hist"><input type="hidden" id="lvl" value="cons">
-    <div class="row"><label for="sm">Stocks, mean real return %<span class="hint" id="smG"></span></label><input id="sm" class="ret" type="number" step="0.05" value="5"></div>
-    <div class="row"><label for="ss">Stocks, volatility %</label><input id="ss" class="ret" type="number" step="0.5" value="17"></div>
-    <div class="row"><label for="bm">Bonds, mean real return %<span class="hint" id="bmG"></span></label><input id="bm" class="ret" type="number" step="0.05" value="1.75"></div>
-    <div class="row"><label for="bs">Bonds, volatility %</label><input id="bs" class="ret" type="number" step="0.5" value="6"></div>
-    <div class="row"><label for="cm">Cash, mean real return %</label><input id="cm" class="ret" type="number" step="0.05" value="0.5"></div>
-    <div class="row"><label for="cs">Cash, volatility %</label><input id="cs" class="ret" type="number" step="0.25" value="1"></div>
-    <div class="row"><label for="rho">Stock/bond correlation</label><input id="rho" class="ret" type="number" step="0.05" min="-1" max="1" value="0.1"></div>
-    <div class="row"><label for="sims">Simulations</label><input id="sims" type="number" step="500" min="500" max="10000" value="3000"></div>
-    <div class="row"><label for="seed">Random seed</label><input id="seed" type="number" step="1" value="42"></div>
   </fieldset>
   <div class="btns">
     <button type="button" id="run">Calculate</button>

@@ -43,6 +43,13 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .seg.two{grid-template-columns:repeat(2,1fr)}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);font-weight:600}
 .srcnote{font-size:12px;color:var(--muted);margin:2px 0 10px;min-height:18px}
+details.advanced{margin-bottom:8px}
+details.advanced summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);padding:6px 0;list-style:none}
+details.advanced summary::-webkit-details-marker{display:none}
+details.advanced summary::before{content:"▸";display:inline-block;width:12px;transition:transform .15s ease}
+details.advanced[open] summary::before{transform:rotate(90deg)}
+details.advanced summary:hover{color:var(--ink)}
+details.advanced .row:first-of-type{margin-top:10px}
 .btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 button{font:inherit;font-size:14px;font-weight:600;border-radius:6px;padding:8px 14px;cursor:pointer;border:1px solid var(--ink);background:var(--ink);color:var(--bg)}
 button.secondary{background:transparent;color:var(--ink);border-color:var(--line)}
