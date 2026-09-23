@@ -21,9 +21,9 @@
 <form class="panel" id="f" onsubmit="return false">
   <details class="io-section" open id="secTimeline">
     <summary><span class="sec-title">Timeline</span><span class="sec-sum" id="timelineSummary"></span><span class="sec-edit">Edit</span></summary>
-    <div class="row"><label for="age">Current age</label><input id="age" type="number" step="0.5" value="59.5"></div>
-    <div class="row"><label for="access">Retirement accounts open at<span class="hint">59.5 unless you plan SEPP or a Roth ladder</span></label><input id="access" type="number" step="0.5" value="59.5"></div>
-    <div class="row"><label for="endAge">Plan through age</label><input id="endAge" type="number" step="1" value="95"></div>
+    <div class="row"><label for="age">Current age</label><input id="age" type="number" step="0.5" min="18" max="100" value="59.5"></div>
+    <div class="row"><label for="access">Retirement accounts open at<span class="hint">59.5 unless you plan SEPP or a Roth ladder</span></label><input id="access" type="number" step="0.5" min="18" max="100" value="59.5"></div>
+    <div class="row"><label for="endAge">Plan through age<span class="hint">up to 75 years out, the limit of the historical cohort data</span></label><input id="endAge" type="number" step="1" min="19" max="120" value="95"></div>
   </details>
   <details class="io-section" open id="secAccounts">
     <summary><span class="sec-title">Accounts</span><span class="sec-sum" id="accountsSummary"></span><span class="sec-edit">Edit</span></summary>

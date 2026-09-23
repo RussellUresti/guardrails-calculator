@@ -90,6 +90,7 @@ function readInputs() {
 }
 function validate(p) {
   if (p.endAge <= p.age) return "Plan-through age must be after your current age.";
+  if (p.endAge - p.age > 75) return "Plan length can't exceed 75 years — that's the limit of the historical cohort data (e.g. age 25 to 100).";
   if (!(p.gL < p.gT && p.gT < p.gU)) return "Guardrails must satisfy lower < target < upper.";
   if (p.gU >= 1) return "Upper guardrail must be below 100%.";
   if (p.tt >= 0.9 || p.tr >= 0.8) return "Tax rates look too high to model.";
