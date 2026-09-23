@@ -30,6 +30,7 @@ function setInputsFrom(pr) {
   $("sm").value = r2(pr.sm * 100); $("ss").value = r2(pr.ss * 100); $("bm").value = r2(pr.bm * 100); $("bs").value = r2(pr.bs * 100);
   $("cm").value = r2(pr.cm * 100); $("cs").value = r2(pr.cs * 100); $("rho").value = r2(pr.rho);
 }
+let lastSrc = null;
 function syncControls() {
   const mode = $("mode").value;
   document.querySelectorAll("#modeSeg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === mode));
@@ -40,6 +41,8 @@ function syncControls() {
     : "Enter your spending; we'll calculate your odds of success.";
   $("gTHint").textContent = mode === "odds" ? "what you're solving for" : "used for recommended spending and triggers";
   const src = $("src").value, lvl = $("lvl").value;
+  if (src === "custom" && lastSrc !== "custom") $("advDetails").open = true;
+  lastSrc = src;
   document.querySelectorAll("#srcSeg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === src));
   document.querySelectorAll("#lvlSeg button").forEach(b => { b.setAttribute("aria-pressed", src !== "custom" && b.dataset.v === lvl); b.disabled = false; });
   $("hzRow").style.display = src === "proj" ? "" : "none";
@@ -122,7 +125,7 @@ function calculate() {
   const my = ++runId;
   setTimeout(() => {
     if (my !== runId) return;
-    const t0 = performance.now(), R = buildReturns(p), total = p.tax + p.cash + p.ret;
+    const R = buildReturns(p), total = p.tax + p.cash + p.ret;
     if (p.mode === "odds") {
       p.spend = round100(spendFor(p, R, p.gT, 1, 26));
       $("spend").value = p.spend; save();
@@ -130,7 +133,7 @@ function calculate() {
     const now = simulate(p, R, p.spend, 1, true), r = solve(p, R, 26), coh = buildCohorts(p);
     render(p, now, total, r, coh);
     const lbl = p.src === "custom" ? "Custom assumptions" : `${p.src === "hist" ? "Historical" : "Projected"}, ${LEVELS[p.lvl].toLowerCase()}`;
-    st.textContent = `${lbl} · ${p.sims.toLocaleString()} simulations, ${p.years} years, ${Math.round(performance.now() - t0)} ms`;
+    st.textContent = `${lbl} · ${p.sims.toLocaleString()} simulations, ${p.years} years`;
     $("run").disabled = false;
   }, 20);
 }
