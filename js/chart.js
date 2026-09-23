@@ -40,7 +40,7 @@ export function drawChart(p, now, col, q, coh) {
   const cohLine = (c, color) => !c ? "" : `<path d="${line(Array.from(c.path))}" fill="none" stroke="${color}" stroke-width="1.5" stroke-dasharray="1 3" stroke-linecap="round" opacity="0.9"/>`;
   const cohLines = coh ? cohLine(coh.best, "var(--safe)") + cohLine(coh.median, "var(--raise)") + cohLine(coh.worst, "var(--cut)") : "";
 
-  document.getElementById("chart").innerHTML = grid + xt + `<path d="${band}" fill="var(--safe-soft)"/>` +
+  document.getElementById("chart").innerHTML = grid + xt + `<path d="${band}" fill="var(--safe-soft)" fill-opacity="0.55"/>` +
     `<line x1="${ax}" x2="${ax}" y1="${T}" y2="${H - B}" stroke="var(--muted)" stroke-dasharray="4 4"/>` +
     cohLines +
     `<path d="${line(t50)}" fill="none" stroke="var(--cut)" stroke-width="2" stroke-dasharray="6 4"/>` +
