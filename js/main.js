@@ -48,7 +48,7 @@ function syncControls() {
   $("usWRow").style.display = eq === "global" ? "" : "none"; $("hcRow").style.display = eq === "global" ? "" : "none";
   if (src !== "custom") {
     const mix = overallMix(num("tax"), num("cash"), num("ret"), num("tStock"), num("rStock"));
-    const pr = presetFor(src, lvl, mix);
+    const pr = presetFor(src, lvl, mix, Math.ceil(num("endAge") - num("age")));
     setInputsFrom(pr);
     let note = pr.label; if (src === "proj" && $("hz").value === "10") note += ". After year 10, switches to historical consensus.";
     $("srcNote").textContent = note;
@@ -74,7 +74,7 @@ function readInputs() {
   p.years = Math.max(1, Math.ceil(p.endAge - p.age));
   if (p.src === "proj" && p.hz === "10") {
     const mix = overallMix(p.tax, p.cash, p.ret, num("tStock"), num("rStock"));
-    p.after = histPreset("cons", mix);
+    p.after = histPreset("cons", mix, null, p.years - 10);
     p.afterYears = 10;
   }
   return p;

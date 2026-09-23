@@ -42,6 +42,9 @@ export function overallMix(tax, cash, ret, tStockPct, rStockPct) {
   return { s: (tax * ts + ret * rs) / tot, b: (tax * (1 - ts) + ret * (1 - rs)) / tot, c: cash / tot };
 }
 
+// keep window length long enough for a stable read, short enough to leave enough overlapping windows in the 98-year dataset
+export const clampWindow = years => Math.max(10, Math.min(75, Math.round(years)));
+
 export function histWindows(mix, opts, L = 50) {
   const out = [], hc = opts && opts.eq === "global" ? opts.hc : 0;
   const D = hc ? HIST.map(x => ({ ...x, s: x.s - hc })) : HIST;
@@ -53,17 +56,18 @@ export function histWindows(mix, opts, L = 50) {
   return out;
 }
 
-export function histPreset(level, mix, opts) {
+export function histPreset(level, mix, opts, years) {
   opts = opts || eqOpts();
-  const W = histWindows(mix, opts), hn = opts.eq === "global" && opts.hc ? `; US stocks less ${hcTxt(opts)}%/yr as a global proxy` : "";
+  const L = clampWindow(years || 50);
+  const W = histWindows(mix, opts, L), hn = opts.eq === "global" && opts.hc ? `; US stocks less ${hcTxt(opts)}%/yr as a global proxy` : "";
   if (level === "cons") {
     const o = {};
     ["sm", "ss", "bm", "bs", "cm", "cs", "rho"].forEach(k => o[k] = mean(W.map(w => w[k])));
-    o.label = `Average of all ${W.length} 50-year windows, ${W[0].from}–${W[W.length - 1].to}${hn}`;
+    o.label = `Average of all ${W.length} ${L}-year windows, ${W[0].from}–${W[W.length - 1].to}${hn}`;
     return o;
   }
   const pick = W.reduce((a, b) => (level === "pess" ? (b.cagr < a.cagr) : (b.cagr > a.cagr)) ? b : a);
-  return { ...pick, label: `${pick.from}–${pick.to}: the ${level === "pess" ? "worst" : "best"} 50-year window for your mix (${(pick.cagr * 100).toFixed(1)}%/yr real)${hn}` };
+  return { ...pick, label: `${pick.from}–${pick.to}: the ${level === "pess" ? "worst" : "best"} ${L}-year window for your mix (${(pick.cagr * 100).toFixed(1)}%/yr real)${hn}` };
 }
 
 export function projPreset(level, opts) {
@@ -86,7 +90,7 @@ export function projPreset(level, opts) {
   };
 }
 
-export function presetFor(src, lvl, mix) {
+export function presetFor(src, lvl, mix, years) {
   const o = eqOpts();
-  return src === "hist" ? histPreset(lvl, mix, o) : projPreset(lvl, o);
+  return src === "hist" ? histPreset(lvl, mix, o, years) : projPreset(lvl, o);
 }
