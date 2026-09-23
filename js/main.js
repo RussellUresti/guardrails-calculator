@@ -3,7 +3,7 @@ import { $, num, clamp01 } from "./dom.js";
 import { init as initAssumptions, LEVELS, presetFor, histPreset, overallMix, cohortReturns, eqOpts } from "./assumptions.js";
 import { buildReturns, simulate, solve, spendFor } from "./simulation.js";
 import { render, updateMix } from "./render.js";
-import { round100 } from "./format.js";
+import { round100, fmtK } from "./format.js";
 import { geoOf } from "./stats.js";
 
 const FIELDS = ["age", "access", "endAge", "tax", "cash", "ret", "tStock", "rStock", "mode", "spend", "tt", "tr", "inc", "incAge", "gT", "gL", "gU", "short", "eq", "usW", "hc", "src", "lvl", "hz", "sm", "ss", "bm", "bs", "cm", "cs", "rho", "sims", "seed"];
@@ -58,7 +58,13 @@ function syncControls() {
   } else $("srcNote").textContent = "Your own inputs. Pick Historical or Projected to load a scenario; the stock-market toggle only affects those.";
   $("smG").textContent = `≈ ${(geoOf(num("sm") / 100, num("ss") / 100) * 100).toFixed(2)}% compound`;
   $("bmG").textContent = `≈ ${(geoOf(num("bm") / 100, num("bs") / 100) * 100).toFixed(2)}% compound`;
+  $("timelineSummary").textContent = `Age ${num("age")} · plan through ${num("endAge")} · accounts open at ${num("access")}`;
+  $("accountsSummary").textContent = `Taxable ${fmtK(num("tax"))} · cash ${fmtK(num("cash"))} · retirement ${fmtK(num("ret"))}`;
 }
+
+const IO_SECTIONS = ["secTimeline", "secAccounts", "secAlloc", "secSpend", "secGuardrails", "secMarket"];
+const collapseAllSections = () => IO_SECTIONS.forEach(id => { $(id).open = false; });
+const expandAllSections = () => IO_SECTIONS.forEach(id => { $(id).open = true; });
 document.querySelectorAll("#modeSeg button").forEach(b => b.addEventListener("click", () => { $("mode").value = b.dataset.v; syncControls(); save(); calculate(); }));
 document.querySelectorAll("#srcSeg button").forEach(b => b.addEventListener("click", () => { $("src").value = b.dataset.v; syncControls(); save(); calculate(); }));
 document.querySelectorAll("#eqSeg button").forEach(b => b.addEventListener("click", () => { $("eq").value = b.dataset.v; syncControls(); save(); calculate(); }));
@@ -143,8 +149,8 @@ $("f").addEventListener("input", e => {
   if (e.target.classList && e.target.classList.contains("ret")) $("src").value = "custom";
   save(); updateMix(); clearTimeout(timer); timer = setTimeout(calculate, 500);
 });
-$("run").addEventListener("click", calculate);
-$("reset").addEventListener("click", () => { FIELDS.forEach(id => $(id).value = DEFAULTS[id]); save(); updateMix(); calculate(); });
+$("run").addEventListener("click", () => { calculate(); collapseAllSections(); });
+$("reset").addEventListener("click", () => { FIELDS.forEach(id => $(id).value = DEFAULTS[id]); save(); updateMix(); expandAllSections(); calculate(); });
 
 // ---------- bootstrap ----------
 async function bootstrap() {

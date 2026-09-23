@@ -19,26 +19,26 @@
 
 <div class="grid">
 <form class="panel" id="f" onsubmit="return false">
-  <fieldset>
-    <legend>Timeline</legend>
+  <details class="io-section" open id="secTimeline">
+    <summary><span class="sec-title">Timeline</span><span class="sec-sum" id="timelineSummary"></span><span class="sec-edit">Edit</span></summary>
     <div class="row"><label for="age">Current age</label><input id="age" type="number" step="0.5" value="59.5"></div>
     <div class="row"><label for="access">Retirement accounts open at<span class="hint">59.5 unless you plan SEPP or a Roth ladder</span></label><input id="access" type="number" step="0.5" value="59.5"></div>
     <div class="row"><label for="endAge">Plan through age</label><input id="endAge" type="number" step="1" value="95"></div>
-  </fieldset>
-  <fieldset>
-    <legend>Accounts</legend>
+  </details>
+  <details class="io-section" open id="secAccounts">
+    <summary><span class="sec-title">Accounts</span><span class="sec-sum" id="accountsSummary"></span><span class="sec-edit">Edit</span></summary>
     <div class="row"><label for="tax">Taxable, invested</label><input id="tax" type="number" step="10000" value="0"></div>
     <div class="row"><label for="cash">Cash reserve</label><input id="cash" type="number" step="5000" value="50000"></div>
     <div class="row"><label for="ret">Retirement accounts<span class="hint">401(k), IRA, Roth combined</span></label><input id="ret" type="number" step="10000" value="1000000"></div>
-  </fieldset>
-  <fieldset>
-    <legend>Asset allocation</legend>
+  </details>
+  <details class="io-section" open id="secAlloc">
+    <summary><span class="sec-title">Asset allocation</span></summary>
     <div class="row"><label for="tStock">Taxable invested: stocks %<span class="hint">the rest is bonds; cash reserve is separate</span></label><input id="tStock" type="number" step="5" min="0" max="100" value="80"></div>
     <div class="row"><label for="rStock">Retirement accounts: stocks %<span class="hint">the rest is bonds</span></label><input id="rStock" type="number" step="5" min="0" max="100" value="80"></div>
     <div class="mix" id="mix" aria-live="polite"></div>
-  </fieldset>
-  <fieldset>
-    <legend>Spending and income</legend>
+  </details>
+  <details class="io-section" open id="secSpend">
+    <summary><span class="sec-title">Spending and income</span></summary>
     <div class="seg two" id="modeSeg" role="group" aria-label="What to solve for">
       <button type="button" data-v="spend">I know my spending</button><button type="button" data-v="odds">I know my target odds</button>
     </div>
@@ -49,17 +49,17 @@
     <div class="row"><label for="tr">Tax on retirement withdrawals %<span class="hint">blended; Roth lowers it</span></label><input id="tr" type="number" step="1" value="15"></div>
     <div class="row"><label for="inc">Other income per year<span class="hint">e.g. Social Security estimate</span></label><input id="inc" type="number" step="1000" value="0"></div>
     <div class="row"><label for="incAge">Other income starts at age</label><input id="incAge" type="number" step="1" value="67"></div>
-  </fieldset>
-  <fieldset>
-    <legend>Guardrails (probability of success)</legend>
+  </details>
+  <details class="io-section" open id="secGuardrails">
+    <summary><span class="sec-title">Guardrails (probability of success)</span></summary>
     <div class="row"><label for="gT">Target %<span class="hint" id="gTHint"></span></label><input id="gT" type="number" step="1" value="80"></div>
     <div class="row"><label for="gL">Lower guardrail, cut below %</label><input id="gL" type="number" step="1" value="70"></div>
     <div class="row"><label for="gU">Upper guardrail, raise above %</label><input id="gU" type="number" step="1" value="95"></div>
     <div class="row"><label for="short">If taxable runs dry before access age</label>
       <select id="short"><option value="fail">Count as failure</option><option value="penalty">Tap retirement with 10% penalty</option></select></div>
-  </fieldset>
-  <fieldset>
-    <legend>Market assumptions</legend>
+  </details>
+  <details class="io-section" open id="secMarket">
+    <summary><span class="sec-title">Market assumptions</span></summary>
     <div class="seg two" id="eqSeg" role="group" aria-label="Stock market">
       <button type="button" data-v="global">Global stocks</button><button type="button" data-v="us">US stocks</button>
     </div>
@@ -88,7 +88,7 @@
       <div class="row"><label for="seed">Random seed</label><input id="seed" type="number" step="1" value="42"></div>
     </details>
     <input type="hidden" id="src" value="hist"><input type="hidden" id="lvl" value="cons">
-  </fieldset>
+  </details>
   <div class="btns">
     <button type="button" id="run">Calculate</button>
     <button type="button" id="reset" class="secondary">Reset inputs</button>
