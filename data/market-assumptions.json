@@ -1,0 +1,27 @@
+{
+  "inflation": 2.4,
+  "stockVolatility": 0.165,
+  "bondVolatility": 0.06,
+  "cashVolatility": 0.01,
+  "stockBondCorrelation": 0.1,
+  "cashMean": 3.3,
+  "stockForecasts": [
+    { "source": "Research Affiliates", "value": 3.1 },
+    { "source": "Vanguard", "value": 4.5 },
+    { "source": "Verus", "value": 5.4 },
+    { "source": "Schwab", "value": 5.9 },
+    { "source": "J.P. Morgan", "value": 6.7 }
+  ],
+  "bondForecasts": [
+    { "source": "Vanguard", "value": 4.3 },
+    { "source": "Research Affiliates", "value": 4.7 },
+    { "source": "Schwab", "value": 4.8 },
+    { "source": "J.P. Morgan", "value": 4.8 }
+  ],
+  "globalStockForecasts": [
+    { "source": "J.P. Morgan", "direct": 7.0 },
+    { "source": "Schwab", "us": 5.9, "developed": 7.0, "emerging": 6.8 },
+    { "source": "Vanguard", "us": 4.5, "exUs": 5.9 },
+    { "source": "Research Affiliates", "us": 3.1, "developed": 7.7, "emerging": 7.5 }
+  ]
+}

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Risk-based guardrails calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Risk-based guardrails, with a bridge</h1>
+  <p>Monte Carlo spending guardrails for an early retiree who has to live on taxable money until retirement accounts open up. All dollars are in today's dollars; returns are after inflation.</p>
+</header>
+
+<div class="grid">
+<form class="panel" id="f" onsubmit="return false">
+  <fieldset>
+    <legend>Timeline</legend>
+    <div class="row"><label for="age">Current age</label><input id="age" type="number" step="0.5" value="43"></div>
+    <div class="row"><label for="access">Retirement accounts open at<span class="hint">59.5 unless you plan SEPP or a Roth ladder</span></label><input id="access" type="number" step="0.5" value="59.5"></div>
+    <div class="row"><label for="endAge">Plan through age</label><input id="endAge" type="number" step="1" value="95"></div>
+  </fieldset>
+  <fieldset>
+    <legend>Accounts</legend>
+    <div class="row"><label for="tax">Taxable, invested</label><input id="tax" type="number" step="10000" value="1200000"></div>
+    <div class="row"><label for="cash">Cash reserve</label><input id="cash" type="number" step="5000" value="90000"></div>
+    <div class="row"><label for="ret">Retirement accounts<span class="hint">401(k), IRA, Roth combined</span></label><input id="ret" type="number" step="10000" value="600000"></div>
+  </fieldset>
+  <fieldset>
+    <legend>Asset allocation</legend>
+    <div class="row"><label for="tStock">Taxable invested: stocks %<span class="hint">the rest is bonds; cash reserve is separate</span></label><input id="tStock" type="number" step="5" min="0" max="100" value="80"></div>
+    <div class="row"><label for="rStock">Retirement accounts: stocks %<span class="hint">the rest is bonds</span></label><input id="rStock" type="number" step="5" min="0" max="100" value="80"></div>
+    <div class="mix" id="mix" aria-live="polite"></div>
+  </fieldset>
+  <fieldset>
+    <legend>Spending and income</legend>
+    <div class="row"><label for="spend">Annual spending, after tax</label><input id="spend" type="number" step="1000" value="50000"></div>
+    <div class="row"><label for="tt">Tax drag on taxable withdrawals %<span class="hint">effective rate on each dollar sold</span></label><input id="tt" type="number" step="1" value="5"></div>
+    <div class="row"><label for="tr">Tax on retirement withdrawals %<span class="hint">blended; Roth lowers it</span></label><input id="tr" type="number" step="1" value="15"></div>
+    <div class="row"><label for="inc">Other income per year<span class="hint">e.g. Social Security estimate</span></label><input id="inc" type="number" step="1000" value="0"></div>
+    <div class="row"><label for="incAge">Other income starts at age</label><input id="incAge" type="number" step="1" value="67"></div>
+  </fieldset>
+  <fieldset>
+    <legend>Guardrails (probability of success)</legend>
+    <div class="row"><label for="gT">Target %</label><input id="gT" type="number" step="1" value="80"></div>
+    <div class="row"><label for="gL">Lower guardrail, cut below %</label><input id="gL" type="number" step="1" value="70"></div>
+    <div class="row"><label for="gU">Upper guardrail, raise above %</label><input id="gU" type="number" step="1" value="95"></div>
+    <div class="row"><label for="short">If taxable runs dry before access age</label>
+      <select id="short"><option value="fail">Count as failure</option><option value="penalty">Tap retirement with 10% penalty</option></select></div>
+  </fieldset>
+  <fieldset>
+    <legend>Market assumptions</legend>
+    <div class="seg two" id="eqSeg" role="group" aria-label="Stock market">
+      <button type="button" data-v="global">Global stocks</button><button type="button" data-v="us">US stocks</button>
+    </div>
+    <input type="hidden" id="eq" value="global">
+    <div class="row" id="usWRow"><label for="usW">US share of global stocks %<span class="hint">a total world index is about 63%</span></label><input id="usW" type="number" step="1" min="0" max="100" value="63"></div>
+    <div class="row" id="hcRow"><label for="hc">Historical stock haircut %<span class="hint">world stocks trailed the US ~1%/yr since 1900</span></label><input id="hc" type="number" step="0.25" min="0" max="5" value="1"></div>
+    <div class="seg" id="srcSeg" role="group" aria-label="Return source">
+      <button type="button" data-v="custom">Custom</button><button type="button" data-v="hist">Historical</button><button type="button" data-v="proj">Projected</button>
+    </div>
+    <div class="seg" id="lvlSeg" role="group" aria-label="Scenario">
+      <button type="button" data-v="pess">Pessimistic</button><button type="button" data-v="cons">Consensus</button><button type="button" data-v="opt">Optimistic</button>
+    </div>
+    <div class="row" id="hzRow"><label for="hz">Apply forecasts for<span class="hint">forecasts cover 10–15 years</span></label>
+      <select id="hz"><option value="all">Every year</option><option value="10">10 years, then historical</option></select></div>
+    <p class="srcnote" id="srcNote"></p>
+    <input type="hidden" id="src" value="hist"><input type="hidden" id="lvl" value="cons">
+    <div class="row"><label for="sm">Stocks, mean real return %<span class="hint" id="smG"></span></label><input id="sm" class="ret" type="number" step="0.05" value="5"></div>
+    <div class="row"><label for="ss">Stocks, volatility %</label><input id="ss" class="ret" type="number" step="0.5" value="17"></div>
+    <div class="row"><label for="bm">Bonds, mean real return %<span class="hint" id="bmG"></span></label><input id="bm" class="ret" type="number" step="0.05" value="1.75"></div>
+    <div class="row"><label for="bs">Bonds, volatility %</label><input id="bs" class="ret" type="number" step="0.5" value="6"></div>
+    <div class="row"><label for="cm">Cash, mean real return %</label><input id="cm" class="ret" type="number" step="0.05" value="0.5"></div>
+    <div class="row"><label for="cs">Cash, volatility %</label><input id="cs" class="ret" type="number" step="0.25" value="1"></div>
+    <div class="row"><label for="rho">Stock/bond correlation</label><input id="rho" class="ret" type="number" step="0.05" min="-1" max="1" value="0.1"></div>
+    <div class="row"><label for="sims">Simulations</label><input id="sims" type="number" step="500" min="500" max="10000" value="3000"></div>
+    <div class="row"><label for="seed">Random seed</label><input id="seed" type="number" step="1" value="42"></div>
+  </fieldset>
+  <div class="btns">
+    <button type="button" id="run">Calculate</button>
+    <button type="button" id="useRec" class="secondary">Use recommended spending</button>
+    <button type="button" id="reset" class="secondary">Reset inputs</button>
+  </div>
+</form>
+
+<main class="panel" id="out" aria-live="polite">
+  <div class="status" id="status">Calculating…</div>
+  <div id="results" hidden>
+    <div class="road" aria-hidden="true">
+      <div class="road-track" id="track"></div>
+      <div class="road-labels" id="roadLabels"></div>
+    </div>
+    <div class="cards">
+      <div class="card cut"><h3>Cut trigger</h3><div class="big" id="cTrig">–</div><p id="cText"></p></div>
+      <div class="card safe"><h3>Today</h3><div class="big" id="nowSucc">–</div><p id="nowText"></p></div>
+      <div class="card raise"><h3>Raise trigger</h3><div class="big" id="uTrig">–</div><p id="uText"></p></div>
+    </div>
+    <p class="rule" id="rule"></p>
+    <div class="stats" id="stats"></div>
+
+    <h2>Total portfolio, today's dollars</h2>
+    <div class="chart-wrap"><svg id="chart" viewBox="0 0 680 260" role="img" aria-label="Portfolio projection percentiles"></svg></div>
+    <div class="legend">
+      <span><i style="background:var(--safe-soft)"></i>10th–90th percentile</span>
+      <span><i style="background:var(--safe)"></i>Median total</span>
+      <span><i style="background:var(--cut)"></i>Median taxable</span>
+      <span><i style="background:var(--muted)"></i>Access age</span>
+    </div>
+    <h2 style="margin-top:22px">How it's calculated</h2>
+    <ul class="notes">
+      <li>Each simulation draws yearly real returns from lognormal distributions. The same random draws are reused for every search and every scenario, so differences between settings come from the assumptions, not from luck.</li>
+      <li><b>Historical</b> uses Aswath Damodaran's annual US data, 1928–2025 (S&amp;P 500 with dividends, 10-year Treasuries, 3-month T-bills), deflated by CPI. There are 49 overlapping 50-year windows. Pessimistic and optimistic are the worst and best windows for <i>your</i> overall stock/bond/cash mix; consensus averages the mean, volatility and correlation across all 49. Each window's mean and volatility then drive the simulation, so the order of good and bad years is randomized rather than replayed.</li>
+      <li><b>Projected</b> uses published 10-year (J.P. Morgan: 10–15 year) nominal forecasts for US large caps and US aggregate bonds, converted to real with a 2.4% inflation assumption. Stocks: Research Affiliates 3.1%, Vanguard 4.5% (midpoint of 4–5%), Verus 5.4%, Schwab 5.9%, J.P. Morgan 6.7%. Bonds: Vanguard 4.3% (midpoint), Research Affiliates 4.7%, Schwab 4.8%, J.P. Morgan 4.8%. Cash: Schwab 3.3%. Pessimistic, consensus and optimistic are the lowest, average and highest. Volatility is set to 16.5% for stocks and 6% for bonds.</li>
+      <li><b>Global stocks</b> (the default) blend each firm's US and international forecasts at your US weight, with international split 75% developed and 25% emerging. J.P. Morgan publishes a global figure (7.0%) directly; Verus is left out because no international figure was available. Averaging geometric returns this way slightly understates a blended portfolio's compound return. For historical scenarios, each year's S&amp;P 500 real return is reduced by the haircut, since world stocks trailed the US by roughly 1%/yr in long-run data from 1900.</li>
+      <li>Success means spending is funded every year through the plan age. Before the access age, only taxable and cash can pay the bills. The taxable account keeps the cash reserve at the same share each year. Withdrawals are grossed up by the tax rates you enter.</li>
+      <li>Triggers scale all balances together, which approximates a market move. Spending stays constant in real terms inside each simulation, as in the Kitces/Income Lab method. Re-run after any adjustment and at least once a year.</li>
+    </ul>
+  </div>
+</main>
+</div>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
