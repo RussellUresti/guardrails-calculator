@@ -1,12 +1,12 @@
 // ---------- app wiring: form state, persistence, controls, orchestration ----------
 import { $, num, clamp01 } from "./dom.js";
 import { init as initAssumptions, LEVELS, presetFor, histPreset, overallMix } from "./assumptions.js";
-import { buildReturns, simulate, solve } from "./simulation.js";
+import { buildReturns, simulate, solve, spendFor } from "./simulation.js";
 import { render, updateMix } from "./render.js";
 import { round100 } from "./format.js";
 import { geoOf } from "./stats.js";
 
-const FIELDS = ["age", "access", "endAge", "tax", "cash", "ret", "tStock", "rStock", "spend", "tt", "tr", "inc", "incAge", "gT", "gL", "gU", "short", "eq", "usW", "hc", "src", "lvl", "hz", "sm", "ss", "bm", "bs", "cm", "cs", "rho", "sims", "seed"];
+const FIELDS = ["age", "access", "endAge", "tax", "cash", "ret", "tStock", "rStock", "mode", "spend", "tt", "tr", "inc", "incAge", "gT", "gL", "gU", "short", "eq", "usW", "hc", "src", "lvl", "hz", "sm", "ss", "bm", "bs", "cm", "cs", "rho", "sims", "seed"];
 const DEFAULTS = {};
 FIELDS.forEach(id => DEFAULTS[id] = $(id).value);
 const KEY = "rbg-bridge-inputs-v2";
@@ -31,6 +31,14 @@ function setInputsFrom(pr) {
   $("cm").value = r2(pr.cm * 100); $("cs").value = r2(pr.cs * 100); $("rho").value = r2(pr.rho);
 }
 function syncControls() {
+  const mode = $("mode").value;
+  document.querySelectorAll("#modeSeg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === mode));
+  $("spend").disabled = mode === "odds";
+  $("spendLabel").textContent = mode === "odds" ? "Annual spending, after tax (calculated)" : "Annual spending, after tax";
+  $("modeNote").textContent = mode === "odds"
+    ? "We'll calculate the spending that hits your target % below (Guardrails)."
+    : "Enter your spending; we'll calculate your odds of success.";
+  $("gTHint").textContent = mode === "odds" ? "what you're solving for" : "used for recommended spending and triggers";
   const src = $("src").value, lvl = $("lvl").value;
   document.querySelectorAll("#srcSeg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === src));
   document.querySelectorAll("#lvlSeg button").forEach(b => { b.setAttribute("aria-pressed", src !== "custom" && b.dataset.v === lvl); b.disabled = false; });
@@ -48,6 +56,7 @@ function syncControls() {
   $("smG").textContent = `≈ ${(geoOf(num("sm") / 100, num("ss") / 100) * 100).toFixed(2)}% compound`;
   $("bmG").textContent = `≈ ${(geoOf(num("bm") / 100, num("bs") / 100) * 100).toFixed(2)}% compound`;
 }
+document.querySelectorAll("#modeSeg button").forEach(b => b.addEventListener("click", () => { $("mode").value = b.dataset.v; syncControls(); save(); calculate(); }));
 document.querySelectorAll("#srcSeg button").forEach(b => b.addEventListener("click", () => { $("src").value = b.dataset.v; syncControls(); save(); calculate(); }));
 document.querySelectorAll("#eqSeg button").forEach(b => b.addEventListener("click", () => { $("eq").value = b.dataset.v; syncControls(); save(); calculate(); }));
 document.querySelectorAll("#lvlSeg button").forEach(b => b.addEventListener("click", () => { if ($("src").value === "custom") $("src").value = "hist"; $("lvl").value = b.dataset.v; syncControls(); save(); calculate(); }));
@@ -60,7 +69,7 @@ function readInputs() {
     gT: num("gT") / 100, gL: num("gL") / 100, gU: num("gU") / 100, short: $("short").value,
     sm: num("sm") / 100, ss: num("ss") / 100, bm: num("bm") / 100, bs: num("bs") / 100, cm: num("cm") / 100, cs: num("cs") / 100, rho: Math.max(-0.99, Math.min(0.99, num("rho"))),
     sims: Math.max(500, Math.min(10000, Math.round(num("sims")))), seed: Math.round(num("seed")), after: null, afterYears: 0,
-    src: $("src").value, lvl: $("lvl").value, hz: $("hz").value,
+    src: $("src").value, lvl: $("lvl").value, hz: $("hz").value, mode: $("mode").value,
   };
   p.years = Math.max(1, Math.ceil(p.endAge - p.age));
   if (p.src === "proj" && p.hz === "10") {
@@ -80,7 +89,7 @@ function validate(p) {
 }
 
 // ---------- main calc ----------
-let lastRec = null, runId = 0;
+let runId = 0;
 function calculate() {
   syncControls();
   const p = readInputs(), err = validate(p), st = $("status");
@@ -91,7 +100,11 @@ function calculate() {
   setTimeout(() => {
     if (my !== runId) return;
     const t0 = performance.now(), R = buildReturns(p), total = p.tax + p.cash + p.ret;
-    const now = simulate(p, R, p.spend, 1, true), r = solve(p, R, 26); lastRec = r.rec;
+    if (p.mode === "odds") {
+      p.spend = round100(spendFor(p, R, p.gT, 1, 26));
+      $("spend").value = p.spend; save();
+    }
+    const now = simulate(p, R, p.spend, 1, true), r = solve(p, R, 26);
     render(p, now, total, r);
     const lbl = p.src === "custom" ? "Custom assumptions" : `${p.src === "hist" ? "Historical" : "Projected"}, ${LEVELS[p.lvl].toLowerCase()}`;
     st.textContent = `${lbl} · ${p.sims.toLocaleString()} simulations, ${p.years} years, ${Math.round(performance.now() - t0)} ms`;
@@ -105,7 +118,6 @@ $("f").addEventListener("input", e => {
   save(); updateMix(); clearTimeout(timer); timer = setTimeout(calculate, 500);
 });
 $("run").addEventListener("click", calculate);
-$("useRec").addEventListener("click", () => { if (lastRec != null) { $("spend").value = round100(lastRec); save(); calculate(); } });
 $("reset").addEventListener("click", () => { FIELDS.forEach(id => $(id).value = DEFAULTS[id]); save(); updateMix(); calculate(); });
 
 // ---------- bootstrap ----------

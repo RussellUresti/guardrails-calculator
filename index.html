@@ -20,15 +20,15 @@
 <form class="panel" id="f" onsubmit="return false">
   <fieldset>
     <legend>Timeline</legend>
-    <div class="row"><label for="age">Current age</label><input id="age" type="number" step="0.5" value="43"></div>
+    <div class="row"><label for="age">Current age</label><input id="age" type="number" step="0.5" value="59.5"></div>
     <div class="row"><label for="access">Retirement accounts open at<span class="hint">59.5 unless you plan SEPP or a Roth ladder</span></label><input id="access" type="number" step="0.5" value="59.5"></div>
     <div class="row"><label for="endAge">Plan through age</label><input id="endAge" type="number" step="1" value="95"></div>
   </fieldset>
   <fieldset>
     <legend>Accounts</legend>
-    <div class="row"><label for="tax">Taxable, invested</label><input id="tax" type="number" step="10000" value="1200000"></div>
-    <div class="row"><label for="cash">Cash reserve</label><input id="cash" type="number" step="5000" value="90000"></div>
-    <div class="row"><label for="ret">Retirement accounts<span class="hint">401(k), IRA, Roth combined</span></label><input id="ret" type="number" step="10000" value="600000"></div>
+    <div class="row"><label for="tax">Taxable, invested</label><input id="tax" type="number" step="10000" value="0"></div>
+    <div class="row"><label for="cash">Cash reserve</label><input id="cash" type="number" step="5000" value="50000"></div>
+    <div class="row"><label for="ret">Retirement accounts<span class="hint">401(k), IRA, Roth combined</span></label><input id="ret" type="number" step="10000" value="1000000"></div>
   </fieldset>
   <fieldset>
     <legend>Asset allocation</legend>
@@ -38,7 +38,12 @@
   </fieldset>
   <fieldset>
     <legend>Spending and income</legend>
-    <div class="row"><label for="spend">Annual spending, after tax</label><input id="spend" type="number" step="1000" value="50000"></div>
+    <div class="seg two" id="modeSeg" role="group" aria-label="What to solve for">
+      <button type="button" data-v="spend">I know my spending</button><button type="button" data-v="odds">I know my target odds</button>
+    </div>
+    <input type="hidden" id="mode" value="spend">
+    <p class="srcnote" id="modeNote"></p>
+    <div class="row"><label for="spend" id="spendLabel">Annual spending, after tax</label><input id="spend" type="number" step="1000" value="50000"></div>
     <div class="row"><label for="tt">Tax drag on taxable withdrawals %<span class="hint">effective rate on each dollar sold</span></label><input id="tt" type="number" step="1" value="5"></div>
     <div class="row"><label for="tr">Tax on retirement withdrawals %<span class="hint">blended; Roth lowers it</span></label><input id="tr" type="number" step="1" value="15"></div>
     <div class="row"><label for="inc">Other income per year<span class="hint">e.g. Social Security estimate</span></label><input id="inc" type="number" step="1000" value="0"></div>
@@ -46,7 +51,7 @@
   </fieldset>
   <fieldset>
     <legend>Guardrails (probability of success)</legend>
-    <div class="row"><label for="gT">Target %</label><input id="gT" type="number" step="1" value="80"></div>
+    <div class="row"><label for="gT">Target %<span class="hint" id="gTHint"></span></label><input id="gT" type="number" step="1" value="80"></div>
     <div class="row"><label for="gL">Lower guardrail, cut below %</label><input id="gL" type="number" step="1" value="70"></div>
     <div class="row"><label for="gU">Upper guardrail, raise above %</label><input id="gU" type="number" step="1" value="95"></div>
     <div class="row"><label for="short">If taxable runs dry before access age</label>
@@ -58,7 +63,7 @@
       <button type="button" data-v="global">Global stocks</button><button type="button" data-v="us">US stocks</button>
     </div>
     <input type="hidden" id="eq" value="global">
-    <div class="row" id="usWRow"><label for="usW">US share of global stocks %<span class="hint">a total world index is about 63%</span></label><input id="usW" type="number" step="1" min="0" max="100" value="63"></div>
+    <div class="row" id="usWRow"><label for="usW">US share of global stocks %<span class="hint">a total world index is about 63%</span></label><input id="usW" type="number" step="1" min="0" max="100" value="60"></div>
     <div class="row" id="hcRow"><label for="hc">Historical stock haircut %<span class="hint">world stocks trailed the US ~1%/yr since 1900</span></label><input id="hc" type="number" step="0.25" min="0" max="5" value="1"></div>
     <div class="seg" id="srcSeg" role="group" aria-label="Return source">
       <button type="button" data-v="custom">Custom</button><button type="button" data-v="hist">Historical</button><button type="button" data-v="proj">Projected</button>
@@ -82,7 +87,6 @@
   </fieldset>
   <div class="btns">
     <button type="button" id="run">Calculate</button>
-    <button type="button" id="useRec" class="secondary">Use recommended spending</button>
     <button type="button" id="reset" class="secondary">Reset inputs</button>
   </div>
 </form>

@@ -9,7 +9,9 @@ export function render(p, now, total, r) {
   $("results").hidden = false;
   const lowV = fL != null ? fL * total : null, upV = fU != null ? fU * total : null;
   $("nowSucc").textContent = pct(now.rate) + " success";
-  $("nowText").textContent = `At ${fmt(p.spend)}/yr on ${fmt(total)}. Spending for ${pct(p.gT)} success: ${fmt(round100(rec))}.`;
+  $("nowText").textContent = p.mode === "odds"
+    ? `Spending for ${pct(p.gT)} target: ${fmt(p.spend)}/yr on ${fmt(total)}.`
+    : `At ${fmt(p.spend)}/yr on ${fmt(total)}. Spending for ${pct(p.gT)} success: ${fmt(round100(rec))}.`;
   if (belowL) { $("cTrig").textContent = "Already below"; $("cText").textContent = `You're under the ${pct(p.gL)} guardrail now. Spending for ${pct(p.gT)}: ${fmt(round100(rec))}.`; }
   else if (fL == null) { $("cTrig").textContent = "None"; $("cText").textContent = "Success stays above the lower guardrail even after a 98% drop."; }
   else { $("cTrig").textContent = fmt(round1k(lowV)); $("cText").textContent = `A ${pct(1 - fL)} drop. Cut spending to ${fmt(round100(sL))} (${((sL / p.spend - 1) * 100).toFixed(1)}%).`; }
@@ -17,7 +19,7 @@ export function render(p, now, total, r) {
   else if (fU == null) { $("uTrig").textContent = "Out of range"; $("uText").textContent = `Even 25× your portfolio doesn't reach ${pct(p.gU)}; check the bridge-failure rate below.`; }
   else { $("uTrig").textContent = fmt(round1k(upV)); $("uText").textContent = `A ${pct(fU - 1)} gain. Raise spending to ${fmt(round100(sU))} (+${((sU / p.spend - 1) * 100).toFixed(1)}%).`; }
   let rule = "";
-  if (belowL || aboveU) { rule = `Your current spending sits outside the guardrails. Setting spending to ${fmt(round100(rec))} would put you back at ${pct(p.gT)} success; use the button on the left, then recalculate to get triggers.`; }
+  if (belowL || aboveU) { rule = `Your current spending sits outside the guardrails. Spending for ${pct(p.gT)} success is ${fmt(round100(rec))} — update the field above, or switch to "I know my target odds" mode.`; }
   else {
     rule = "Check your total portfolio (taxable, cash and retirement accounts) each quarter. ";
     if (lowV != null) rule += `If it falls below ${fmt(round1k(lowV))}, cut spending to ${fmt(round100(sL))}. `;
