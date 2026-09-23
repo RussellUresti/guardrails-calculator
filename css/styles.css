@@ -22,12 +22,12 @@ body{margin:0;background:var(--bg);color:var(--ink);
   font-family:"Instrument Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   font-size:15px;line-height:1.5;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
 .wrap{max-width:1240px;margin:0 auto;padding:28px 20px 48px}
-header{margin-bottom:24px;max-width:70ch}
+header{margin:0 auto 24px;max-width:960px}
 h1{font-size:clamp(26px,3.4vw,36px);line-height:1.1;margin:0 0 8px;font-weight:700;letter-spacing:-0.015em}
 header p{margin:0;color:var(--muted)}
-footer{margin-top:28px;padding-top:16px;border-top:1px solid var(--line)}
-footer p{margin:0;max-width:80ch;font-size:12px;color:var(--muted)}
-.grid{display:flex;flex-direction:column;gap:24px;max-width:640px;margin:0 auto}
+footer{margin:28px auto 0;max-width:960px;padding-top:16px;border-top:1px solid var(--line)}
+footer p{margin:0;font-size:12px;color:var(--muted)}
+.grid{display:flex;flex-direction:column;gap:24px;max-width:960px;margin:0 auto}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;min-width:0}
 details.io-section{margin:0 0 18px}
 details.io-section+details.io-section{border-top:1px solid var(--line);padding-top:16px}
@@ -39,14 +39,14 @@ details.io-section:not([open]) .sec-title::before{content:"▸"}
 details.io-section .sec-sum{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:400;color:var(--muted)}
 details.io-section .sec-edit{flex-shrink:0;font-size:13px;font-weight:600;color:var(--focus)}
 details.io-section[open] .sec-sum,details.io-section[open] .sec-edit{display:none}
-.row{display:grid;grid-template-columns:1fr 128px;gap:10px;align-items:center;margin-bottom:8px}
+.row{display:grid;grid-template-columns:1fr 128px;gap:10px;align-items:center;margin-bottom:8px;max-width:560px}
 .row label{font-size:14px;color:var(--muted)}
 .row .hint{display:block;font-size:12px;color:var(--muted);opacity:.85}
 input,select{width:100%;font:inherit;font-size:14px;color:var(--ink);background:var(--bg);
   border:1px solid var(--line);border-radius:6px;padding:6px 8px;text-align:right}
 select{text-align:left}
 input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
-.seg{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:7px;overflow:hidden;margin-bottom:8px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:7px;overflow:hidden;margin-bottom:8px;max-width:560px}
 .seg button{border:0;border-right:1px solid var(--line);border-radius:0;background:var(--bg);color:var(--muted);font-weight:500;padding:7px 4px;font-size:13px}
 .seg button:last-child{border-right:0}
 .seg.two{grid-template-columns:repeat(2,1fr)}
