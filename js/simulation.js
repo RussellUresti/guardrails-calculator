@@ -15,30 +15,32 @@ export function buildReturns(p) {
 }
 
 export function simulate(p, R, spend, f, record) {
-  const N = p.sims, Y = p.years, T0 = (p.tax + p.cash) * f, Ret0 = p.ret * f;
-  const wc = (p.tax + p.cash) > 0 ? p.cash / (p.tax + p.cash) : 0;
+  const N = p.sims, Y = p.years, T0 = p.tax * f, C0 = p.cash * f, Ret0 = p.ret * f;
+  // the cash reserve is a fixed multiple of annual spending (as entered), not a share of the portfolio
+  const cashMult = p.spend > 0 ? p.cash / p.spend : 0;
   let ok = 0, bridgeFail = 0, lateFail = 0;
   const tot = record ? new Float64Array(N * (Y + 1)) : null, txb = record ? new Float64Array(N * (Y + 1)) : null;
   const failYear = record ? new Int32Array(N).fill(-1) : null;
   const penRate = 1 - p.tr - 0.10;
   for (let n = 0; n < N; n++) {
-    let T = T0, Rt = Ret0, failed = false;
-    if (record) { tot[n * (Y + 1)] = T + Rt; txb[n * (Y + 1)] = T; }
+    let T = T0, C = C0, Rt = Ret0, failed = false;
+    if (record) { tot[n * (Y + 1)] = C + T + Rt; txb[n * (Y + 1)] = C + T; }
     for (let y = 0; y < Y; y++) {
       const age = p.age + y;
       let need = spend - (age >= p.incAge ? p.inc : 0); if (need < 0) need = 0;
       const pre = Math.min(1, Math.max(0, p.access - age)), needPre = need * pre, needPost = need - needPre;
+      // taxable-side withdrawals draw the cash reserve first, then invested taxable assets
       let gross = needPre / (1 - p.tt);
-      if (gross <= T) { T -= gross; }
+      if (gross <= C + T) { const fromC = Math.min(C, gross); C -= fromC; T -= gross - fromC; }
       else {
-        const rem = (gross - T) * (1 - p.tt); T = 0;
+        const rem = (gross - C - T) * (1 - p.tt); C = 0; T = 0;
         if (p.short === "penalty" && penRate > 0) { const g2 = rem / penRate; if (g2 <= Rt) Rt -= g2; else { failed = true; bridgeFail++; } }
         else { failed = true; bridgeFail++; }
       }
       if (!failed) {
         gross = needPost / (1 - p.tt);
-        if (gross <= T) { T -= gross; }
-        else { const rem = (gross - T) * (1 - p.tt); T = 0; const g2 = rem / (1 - p.tr); if (g2 <= Rt) Rt -= g2; else { failed = true; lateFail++; } }
+        if (gross <= C + T) { const fromC = Math.min(C, gross); C -= fromC; T -= gross - fromC; }
+        else { const rem = (gross - C - T) * (1 - p.tt); C = 0; T = 0; const g2 = rem / (1 - p.tr); if (g2 <= Rt) Rt -= g2; else { failed = true; lateFail++; } }
       }
       if (failed) {
         if (record) {
@@ -57,9 +59,13 @@ export function simulate(p, R, spend, f, record) {
         break;
       }
       const i = n * Y + y;
-      T *= wc * R.rc[i] + (1 - wc) * (p.ts * R.rs[i] + (1 - p.ts) * R.rb[i]);
+      C *= R.rc[i];
+      T *= p.ts * R.rs[i] + (1 - p.ts) * R.rb[i];
       Rt *= p.rs * R.rs[i] + (1 - p.rs) * R.rb[i];
-      if (record) { tot[n * (Y + 1) + y + 1] = T + Rt; txb[n * (Y + 1) + y + 1] = T; }
+      // reset the reserve to the target multiple of this year's spending, refilling from (or sweeping excess to) invested taxable
+      const shift = Math.min(cashMult * spend, C + T) - C;
+      C += shift; T -= shift;
+      if (record) { tot[n * (Y + 1) + y + 1] = C + T + Rt; txb[n * (Y + 1) + y + 1] = C + T; }
     }
     if (!failed) ok++;
   }
