@@ -40,7 +40,22 @@ export function simulate(p, R, spend, f, record) {
         if (gross <= T) { T -= gross; }
         else { const rem = (gross - T) * (1 - p.tt); T = 0; const g2 = rem / (1 - p.tr); if (g2 <= Rt) Rt -= g2; else { failed = true; lateFail++; } }
       }
-      if (failed) { if (record) { failYear[n] = y; for (let z = y + 1; z <= Y; z++) { tot[n * (Y + 1) + z] = 0; txb[n * (Y + 1) + z] = 0; } } break; }
+      if (failed) {
+        if (record) {
+          // taxable is genuinely exhausted from here on, but retirement (if untouched or partly left) didn't
+          // vanish — keep compounding it through the remaining years for display, using the same return
+          // sequence, rather than claiming the whole balance hit zero
+          failYear[n] = y;
+          let RtF = Rt;
+          for (let z = y; z < Y; z++) {
+            const i = n * Y + z;
+            RtF *= p.rs * R.rs[i] + (1 - p.rs) * R.rb[i];
+            tot[n * (Y + 1) + z + 1] = RtF;
+            txb[n * (Y + 1) + z + 1] = 0;
+          }
+        }
+        break;
+      }
       const i = n * Y + y;
       T *= wc * R.rc[i] + (1 - wc) * (p.ts * R.rs[i] + (1 - p.ts) * R.rb[i]);
       Rt *= p.rs * R.rs[i] + (1 - p.rs) * R.rb[i];

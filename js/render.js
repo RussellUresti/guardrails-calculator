@@ -4,6 +4,44 @@ import { overallMix } from "./assumptions.js";
 import { fmt, fmtK, pct, round100, round1k } from "./format.js";
 import { drawChart } from "./chart.js";
 
+// series shown/hidden by clicking the legend; persists across re-renders in this session, not across reloads
+const hiddenSeries = new Set();
+let lastSeries = null;
+
+function buildSeries(p, now, col, q, coh) {
+  const Y = p.years, p10 = [], p50 = [], p90 = [], t50 = [];
+  for (let y = 0; y <= Y; y++) { const a = col(now.tot, y); p10.push(q(a, 0.1)); p50.push(q(a, 0.5)); p90.push(q(a, 0.9)); t50.push(q(col(now.txb, y), 0.5)); }
+
+  const series = [{ id: "band", kind: "band", label: "10th–90th percentile (Monte Carlo)", color: "var(--safe-soft)", p10, p90 }];
+
+  const cohDefs = [["best", "Best", "var(--safe)"], ["median", "Typical", "var(--raise)"], ["worst", "Worst", "var(--cut)"]];
+  cohDefs.forEach(([key, label, color]) => {
+    const c = coh && coh[key];
+    if (!c) return;
+    const ret = Array.from(c.tot).map((v, i) => v - c.txb[i]);
+    series.push({ id: `${key}Tax`, kind: "line", label: `${label} cohort, taxable (${c.from}–${c.to})`, color, dash: "1 3", width: 1.5, data: Array.from(c.txb) });
+    series.push({ id: `${key}Ret`, kind: "line", label: `${label} cohort, retirement (${c.from}–${c.to})`, color, dash: "4 2", width: 1.5, data: ret });
+  });
+
+  series.push({ id: "medTaxable", kind: "line", label: "Median taxable", color: "var(--cut)", dash: "6 4", width: 2, data: t50 });
+  series.push({ id: "medTotal", kind: "line", label: "Median total", color: "var(--safe)", dash: null, width: 2.5, data: p50 });
+  return series;
+}
+
+function renderLegend(series) {
+  $("legend").innerHTML = series.map(s => {
+    const isHidden = hiddenSeries.has(s.id);
+    const swatch = s.kind === "band" ? `<i style="background:${s.color}"></i>`
+      : `<i class="${s.dash === "6 4" ? "dashed" : s.dash ? "dotted" : ""}" style="${s.dash ? `color:${s.color}` : `background:${s.color}`}"></i>`;
+    return `<button type="button" class="legend-item" data-id="${s.id}" aria-pressed="${!isHidden}" style="opacity:${isHidden ? 0.4 : 1}">${swatch}${s.label}</button>`;
+  }).join("");
+  $("legend").querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+    const id = b.dataset.id;
+    if (hiddenSeries.has(id)) hiddenSeries.delete(id); else hiddenSeries.add(id);
+    if (lastSeries) { renderLegend(lastSeries.series); drawChart(lastSeries.p, lastSeries.series, hiddenSeries); }
+  }));
+}
+
 export function render(p, now, total, r, coh) {
   const { rec, fL, fU, sL, sU, belowL, aboveU } = r;
   $("results").hidden = false;
@@ -59,13 +97,10 @@ export function render(p, now, total, r, coh) {
   if (lowV != null) lab += `<span style="left:${Math.max(8, lp)}%"><b>${fmtK(lowV)}</b>cut</span>`;
   if (upV != null) lab += `<span style="left:${Math.min(92, up)}%"><b>${fmtK(upV)}</b>raise</span>`;
   labels.innerHTML = lab;
-  drawChart(p, now, col, q, coh);
-  $("legBestRow").style.display = coh && coh.best ? "" : "none";
-  $("legWorstRow").style.display = coh && coh.worst ? "" : "none";
-  $("legTypicalRow").style.display = coh ? "" : "none";
-  if (coh && coh.best) $("legBest").textContent = `Best actual cohort (${coh.best.from}–${coh.best.to})`;
-  if (coh && coh.worst) $("legWorst").textContent = `Worst actual cohort (${coh.worst.from}–${coh.worst.to})`;
-  if (coh) $("legTypical").textContent = `Typical actual cohort (${coh.median.from}–${coh.median.to})`;
+  const series = buildSeries(p, now, col, q, coh);
+  lastSeries = { p, series };
+  renderLegend(series);
+  drawChart(p, series, hiddenSeries);
 }
 
 export function updateMix() {

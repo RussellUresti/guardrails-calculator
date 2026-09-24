@@ -113,18 +113,18 @@ function buildCohorts(p) {
     const end = cs.tot[k * (Y + 1) + Y], failYear = cs.failYear[k];
     return { ...c, k, end, failYear, rank: failYear >= 0 ? failYear : Y + 1 + end / 1e12 };
   }).sort((a, b) => a.rank - b.rank);
-  const withPath = c => {
-    const path = new Float64Array(Y + 1);
-    for (let y = 0; y <= Y; y++) path[y] = cs.tot[c.k * (Y + 1) + y];
-    return { ...c, path };
+  const withPaths = c => {
+    const tot = new Float64Array(Y + 1), txb = new Float64Array(Y + 1);
+    for (let y = 0; y <= Y; y++) { tot[y] = cs.tot[c.k * (Y + 1) + y]; txb[y] = cs.txb[c.k * (Y + 1) + y]; }
+    return { ...c, tot, txb };
   };
   const failCount = ranked.filter(c => c.failYear >= 0).length;
   // beyond TIER1, the pool of cohorts is too thin for "worst"/"best" to mean much — keep only "typical"
   const showExtremes = Y <= TIER1[opts.eq === "global" ? "global" : "us"];
   return {
-    worst: showExtremes ? withPath(ranked[0]) : null,
-    median: withPath(ranked[Math.floor((K - 1) / 2)]),
-    best: showExtremes ? withPath(ranked[K - 1]) : null,
+    worst: showExtremes ? withPaths(ranked[0]) : null,
+    median: withPaths(ranked[Math.floor((K - 1) / 2)]),
+    best: showExtremes ? withPaths(ranked[K - 1]) : null,
     K, failCount,
   };
 }
